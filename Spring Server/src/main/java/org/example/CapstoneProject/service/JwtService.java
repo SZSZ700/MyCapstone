@@ -113,6 +113,11 @@ public class JwtService {
             // Parse the compact JWT string.
             SignedJWT signedJWT = SignedJWT.parse(token);
 
+            // Reject tokens that use a different signing algorithm.
+            if (!JWSAlgorithm.HS256.equals(signedJWT.getHeader().getAlgorithm())) {
+                return false;
+            }
+
             // Create a verifier using the same secret key.
             MACVerifier verifier = new MACVerifier(JWT_SECRET);
 
