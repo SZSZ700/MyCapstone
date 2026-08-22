@@ -23,7 +23,6 @@ import java.util.concurrent.CompletableFuture;
  */
 @SuppressWarnings({"ConstantValue", "ExtractMethodRecommender", "unused"})
 public class RestClient {
-
     // Base URL of the backend server (10.0.2.2 = localhost for Android emulator)
     private static final String BASE_URL = "https://10.0.2.2:8443/myapp/api/users";
 
