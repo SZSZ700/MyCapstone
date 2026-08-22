@@ -35,6 +35,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.jwtService = jwtService;
     }
 
+
     // ---------------------------------------------------------------------
     // Determines whether JWT authentication should be skipped.
     // ---------------------------------------------------------------------
