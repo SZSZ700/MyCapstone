@@ -96,11 +96,11 @@ public class JwtServiceTest {
         var payload = parts[1];
 
         // Replace the first character of the payload with a different character.
-        char replacement = payload.charAt(0) == 'A' ? 'B' : 'A';
+        var replacement = payload.charAt(0) == 'A' ? 'B' : 'A';
         // Remove the first character of the payload.
-        String tamperedPayload = replacement + payload.substring(1);
+        var tamperedPayload = replacement + payload.substring(1);
         // Reconstruct the token with the tampered payload.
-        String tamperedToken = parts[0] + "." + tamperedPayload + "." + parts[2];
+        var tamperedToken = parts[0] + "." + tamperedPayload + "." + parts[2];
         // Verify that the tampered token is rejected.
         assertFalse(jwtService.validateToken(tamperedToken));
     }
