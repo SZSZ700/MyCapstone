@@ -1,0 +1,30 @@
+# Android Studio
+*.iml
+.gradle/
+.idea/
+local.properties
+.DS_Store
+
+# Files inside .idea that should not be tracked
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Build and generated files
+/build/
+app/build/
+.cxx/
+.externalNativeBuild/
+captures/
+
+# APKs, signing keys, and release files
+*.apk
+*.jks
+*.keystore
+
+# Backup and temporary files
+*.log
+*.tmp

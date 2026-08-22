@@ -1,0 +1,154 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:gravity="center_horizontal"
+    android:background="#E3F2FD">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Water Intake Tracker 💧"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:textColor="#1565C0"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:id="@+id/yesterdayText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Yesterday you drank: 0 ml"
+        android:textSize="16sp"
+        android:textColor="#004D40"
+        android:background="#B2EBF2"
+        android:padding="12dp"
+        android:layout_marginBottom="20dp" />
+
+    <TextView
+        android:id="@+id/totalWaterText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="You have drunk so far: 0 ml"
+        android:textSize="18sp"
+        android:textColor="#0D47A1"
+        android:layout_marginBottom="24dp" />
+
+    <Button
+        android:id="@+id/drink150"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:backgroundTint="#64B5F6"
+        android:text="Plastic cup - 150 ml"
+        android:textColor="#FFF"
+        android:drawableRight="@drawable/plasticmini2"
+        android:drawablePadding="8dp"
+        android:padding="6dp" />
+
+    <Button
+        android:id="@+id/drink200"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="10dp"
+        android:backgroundTint="#2196F3"
+        android:text="@string/paper_cup_200_ml"
+        android:textColor="#FFF"
+        android:drawableRight="@drawable/cartonmini"
+        android:drawablePadding="8dp"
+        android:padding="0dp" />
+
+    <Button
+        android:id="@+id/drink1000"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="30dp"
+        android:backgroundTint="#1976D2"
+        android:text="@string/water_bottle_1000_ml"
+        android:textColor="#FFF"
+        android:drawableRight="@drawable/bottlemini"
+        android:drawablePadding="9dp"
+        android:padding="6dp"/>
+
+    <ImageButton
+        android:id="@+id/imageButton4"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:backgroundTint="#E3F2FD"
+        app:srcCompat="?attr/homeAsUpIndicator" />
+
+    <TextView
+        android:id="@+id/goalSummaryTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Goal consistency (last 7 days)"
+        android:textStyle="bold"
+        android:textSize="16sp"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:textColor="#0D47A1" />
+
+    <TextView
+        android:id="@+id/goalSummaryText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginTop="4dp"
+        android:textColor="#0D47A1" />
+
+    <ProgressBar
+        android:id="@+id/goalProgressBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:max="100"
+        android:progress="0"
+        android:layout_marginTop="4dp" />
+
+    <TextView
+        android:id="@+id/bestDayText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginTop="8dp"
+        android:textColor="#004D40" />
+
+    <TextView
+        android:id="@+id/lowestDayText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text=""
+        android:textSize="14sp"
+        android:gravity="center"
+        android:layout_marginTop="4dp"
+        android:textColor="#004D40" />
+
+    <Switch
+        android:id="@+id/switchWaterReminder"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="allow notfications" />
+
+
+
+    <com.google.android.material.textfield.TextInputEditText
+        android:id="@+id/customWater"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="how much water did you drink now?"
+        android:inputType="numberDecimal" />
+
+    <Button
+        android:id="@+id/button7"
+        android:layout_width="155dp"
+        android:layout_height="50dp"
+        android:backgroundTint="#0D47A1"
+        android:text="submit"
+        android:textColor="#FFF" />
+</LinearLayout>

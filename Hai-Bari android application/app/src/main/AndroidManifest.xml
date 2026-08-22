@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--suppress ALL -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Allows the application to access the internet. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Allows the application to display notifications. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.MyFinalTopApplication"
+        android:usesCleartextTraffic="false">
+
+        <!-- Activity used for configuring the user's daily water goal. -->
+        <activity
+            android:name=".DailyWaterGoal"
+            android:exported="false" />
+
+        <!-- Activity used for displaying the user's water consumption chart. -->
+        <activity
+            android:name=".WaterChartActivity"
+            android:exported="false" />
+
+        <!-- Activity used for registering a new user. -->
+        <activity
+            android:name=".signup"
+            android:exported="false" />
+
+        <!-- Activity used for user login. -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
+
+        <!-- Activity used for managing the user's daily water consumption. -->
+        <activity
+            android:name=".WaterActivity"
+            android:exported="false" />
+
+        <!-- Activity used for BMI calculations and related information. -->
+        <activity
+            android:name=".BMIActivity"
+            android:exported="false" />
+
+        <!-- Main home screen displayed after entering the application. -->
+        <activity
+            android:name=".HomePage"
+            android:exported="false" />
+
+        <!-- Launcher activity that starts when the application is opened. -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+        <!-- Receives scheduled events used for water reminder notifications. -->
+        <receiver
+            android:name=".WaterReminderReceiver"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
