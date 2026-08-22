@@ -7,8 +7,9 @@ import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jose.crypto.MACVerifier;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import org.springframework.stereotype.Service;
 import org.example.CapstoneProject.EnvConfiguration.EnvConfig;
+import org.springframework.stereotype.Service;
+
 import java.text.ParseException;
 import java.util.Date;
 
@@ -22,12 +23,11 @@ import java.util.Date;
 // - issuedAt: time when the token was created
 // - expirationTime: time when the token becomes invalid
 // -------------------------------------------------------------------------
-@SuppressWarnings("ExtractMethodRecommender")
 @Service
 public class JwtService {
 
-    // Secret key loaded from the .env file.
-    private static final String JWT_SECRET = loadJwtSecret();
+    // Secret key used to sign and verify JWT tokens.
+    private final String jwtSecret;
 
     // Token lifetime in milliseconds.
     //
@@ -37,19 +37,54 @@ public class JwtService {
 
 
     // ---------------------------------------------------------------------
+    // Creates the production JwtService.
+    //
+    // The real JWT secret is loaded from the local environment.
+    // ---------------------------------------------------------------------
+    public JwtService() {
+        this.jwtSecret = loadJwtSecret();
+    }
+
+    // ---------------------------------------------------------------------
+    // Creates JwtService with an explicitly provided secret.
+    //
+    // This constructor allows automated tests to use a dedicated fake
+    // secret without exposing or depending on the real production secret.
+    //
+    // jwtSecret: secret used to sign and verify JWT tokens
+    // ---------------------------------------------------------------------
+    public JwtService(String jwtSecret) {
+
+        // Reject missing or insufficiently long secrets.
+        if (jwtSecret == null || jwtSecret.length() < 32) {
+            throw new IllegalArgumentException(
+                    "JWT secret must exist and contain at least 32 characters"
+            );
+        }
+
+        // Store the provided secret for this JwtService instance.
+        this.jwtSecret = jwtSecret;
+    }
+
+
+    // ---------------------------------------------------------------------
     // Loads and validates the JWT secret from the environment.
     // ---------------------------------------------------------------------
     private static String loadJwtSecret() {
-        // The secret must be at least 32 characters long.
+
+        // Read the real secret from the local environment configuration.
         var secret = EnvConfig.getJwtSecret();
+
         // Throw an exception if the secret is missing or too short.
         if (secret == null || secret.length() < 32) {
             throw new IllegalStateException(
                     "JWT_SECRET must exist and contain at least 32 characters"
             );
         }
+
         return secret;
     }
+
 
     // ---------------------------------------------------------------------
     // Generates a signed JWT for the provided username.
@@ -65,33 +100,30 @@ public class JwtService {
 
             // Build the JWT claims.
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    // Set the subject (username) as the JWT ID.
+                    // Set the subject to the authenticated username.
                     .subject(username)
-                    // set the token creation time
+                    // Set the token creation time.
                     .issueTime(now)
-                    // set the expiration time
+                    // Set the expiration time.
                     .expirationTime(expiration)
-                    // build the JWT claims set
+                    // Build the JWT claims set.
                     .build();
 
             // Create the signed JWT object using HS256.
-            // (Creates a new minimal JSON Web Signature (JWS) header.)
             SignedJWT signedJWT = new SignedJWT(
-                    // Set the JWT header to HS256.
-                    // This is the algorithm used to sign the token.
+                    // Set the required signing algorithm.
                     new JWSHeader(JWSAlgorithm.HS256),
-                    // Set the JWT claims.
+                    // Attach the JWT claims.
                     claims
             );
 
-            // Create the signer using the secret key.
-            MACSigner signer = new MACSigner(JWT_SECRET);
+            // Create the signer using this JwtService instance secret.
+            MACSigner signer = new MACSigner(jwtSecret);
 
-            // Signs this JWS object with the specified signer.
-            // The JWS object must be in a unsigned state.
+            // Sign the JWT using HS256 and the configured secret.
             signedJWT.sign(signer);
 
-            // Convert the JWT into the compact string format.
+            // Convert the JWT into compact serialization format.
             return signedJWT.serialize();
 
         } catch (JOSEException e) {
@@ -100,26 +132,30 @@ public class JwtService {
         }
     }
 
+
     // ---------------------------------------------------------------------
-    // Validates the JWT signature and expiration time.
+    // Validates the JWT algorithm, signature and expiration time.
     //
     // Returns true only when:
     // - the token can be parsed
+    // - the token uses HS256
     // - the signature is valid
+    // - the token contains an expiration time
     // - the token has not expired
     // ---------------------------------------------------------------------
     public boolean validateToken(String token) {
+
         try {
             // Parse the compact JWT string.
             SignedJWT signedJWT = SignedJWT.parse(token);
 
-            // Reject tokens that use a different signing algorithm.
+            // Reject tokens that use a signing algorithm other than HS256.
             if (!JWSAlgorithm.HS256.equals(signedJWT.getHeader().getAlgorithm())) {
                 return false;
             }
 
-            // Create a verifier using the same secret key.
-            MACVerifier verifier = new MACVerifier(JWT_SECRET);
+            // Create a verifier using this JwtService instance secret.
+            MACVerifier verifier = new MACVerifier(jwtSecret);
 
             // Verify the cryptographic signature.
             boolean validSignature = signedJWT.verify(verifier);
@@ -131,7 +167,7 @@ public class JwtService {
             Date expiration = signedJWT.getJWTClaimsSet().getExpirationTime();
 
             // Reject tokens without an expiration time.
-            if (expiration == null) { return false;}
+            if (expiration == null) { return false; }
 
             // Return true only when the token has not expired.
             return expiration.after(new Date());
@@ -140,6 +176,7 @@ public class JwtService {
         // Invalid or malformed tokens are considered invalid.
         catch (ParseException | JOSEException e) { return false; }
     }
+
 
     // ---------------------------------------------------------------------
     // Extracts the username stored in the JWT subject claim.
