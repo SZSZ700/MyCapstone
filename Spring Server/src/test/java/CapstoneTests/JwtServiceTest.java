@@ -89,11 +89,11 @@ public class JwtServiceTest {
         var jwtService = new JwtService();
 
         // Generate a valid token.
-        String token = jwtService.generateToken("testUser");
+        var token = jwtService.generateToken("testUser");
 
         // Tamper with the payload to make it invalid.
-        String[] parts = token.split("\\.");
-        String payload = parts[1];
+        var parts = token.split("\\.");
+        var payload = parts[1];
 
         // Replace the first character of the payload with a different character.
         char replacement = payload.charAt(0) == 'A' ? 'B' : 'A';
