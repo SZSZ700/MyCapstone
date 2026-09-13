@@ -16,16 +16,15 @@ import java.util.Date;
 // -------------------------------------------------------------------------
 // Handles JWT creation, validation and username extraction.
 //
-// The token is signed using the HS256 algorithm.
+// Tokens are signed using the HS256 algorithm.
 //
-// The JWT contains:
+// Each JWT contains:
 // - subject: username of the authenticated user
 // - issuedAt: time when the token was created
 // - expirationTime: time when the token becomes invalid
 // -------------------------------------------------------------------------
 @Service
 public class JwtService {
-
     // Secret key used to sign and verify JWT tokens.
     private final String jwtSecret;
 
@@ -34,7 +33,6 @@ public class JwtService {
     // 24 hours:
     // 24 * 60 * 60 * 1000 = 86,400,000 milliseconds.
     private static final long TOKEN_EXPIRATION_MS = 86_400_000L;
-
 
     // ---------------------------------------------------------------------
     // Creates the production JwtService.
@@ -54,7 +52,6 @@ public class JwtService {
     // jwtSecret: secret used to sign and verify JWT tokens
     // ---------------------------------------------------------------------
     public JwtService(String jwtSecret) {
-
         // Reject missing or insufficiently long secrets.
         if (jwtSecret == null || jwtSecret.length() < 32) {
             throw new IllegalArgumentException(
@@ -66,12 +63,10 @@ public class JwtService {
         this.jwtSecret = jwtSecret;
     }
 
-
     // ---------------------------------------------------------------------
     // Loads and validates the JWT secret from the environment.
     // ---------------------------------------------------------------------
     private static String loadJwtSecret() {
-
         // Read the real secret from the local environment configuration.
         var secret = EnvConfig.getJwtSecret();
 
@@ -85,12 +80,10 @@ public class JwtService {
         return secret;
     }
 
-
     // ---------------------------------------------------------------------
     // Generates a signed JWT for the provided username.
     // ---------------------------------------------------------------------
     public String generateToken(String username) {
-
         try {
             // Store the current time.
             Date now = new Date();
@@ -100,29 +93,21 @@ public class JwtService {
 
             // Build the JWT claims.
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
-                    // Set the subject to the authenticated username.
                     .subject(username)
-                    // Set the token creation time.
                     .issueTime(now)
-                    // Set the expiration time.
                     .expirationTime(expiration)
-                    // Build the JWT claims set.
                     .build();
 
-            // Create the signed JWT object using HS256.
+            // Create the JWT using the required HS256 algorithm.
             SignedJWT signedJWT = new SignedJWT(
-                    // Set the required signing algorithm.
                     new JWSHeader(JWSAlgorithm.HS256),
-                    // Attach the JWT claims.
                     claims
             );
 
             // Create the signer using this JwtService instance secret.
             MACSigner signer = new MACSigner(jwtSecret);
-
-            // Sign the JWT using HS256 and the configured secret.
+            // Sign the JWT.
             signedJWT.sign(signer);
-
             // Convert the JWT into compact serialization format.
             return signedJWT.serialize();
 
@@ -131,7 +116,6 @@ public class JwtService {
             throw new IllegalStateException("Failed to generate JWT", e);
         }
     }
-
 
     // ---------------------------------------------------------------------
     // Validates the JWT algorithm, signature and expiration time.
@@ -144,7 +128,6 @@ public class JwtService {
     // - the token has not expired
     // ---------------------------------------------------------------------
     public boolean validateToken(String token) {
-
         try {
             // Parse the compact JWT string.
             SignedJWT signedJWT = SignedJWT.parse(token);
@@ -171,12 +154,11 @@ public class JwtService {
 
             // Return true only when the token has not expired.
             return expiration.after(new Date());
-
+        } catch (ParseException | JOSEException e) {
+            // Invalid or malformed tokens are considered invalid.
+            return false;
         }
-        // Invalid or malformed tokens are considered invalid.
-        catch (ParseException | JOSEException e) { return false; }
     }
-
 
     // ---------------------------------------------------------------------
     // Extracts the username stored in the JWT subject claim.
@@ -184,14 +166,11 @@ public class JwtService {
     // Returns null when the token cannot be parsed.
     // ---------------------------------------------------------------------
     public String extractUsername(String token) {
-
         try {
             // Parse the JWT.
             SignedJWT signedJWT = SignedJWT.parse(token);
-
-            // Return the subject claim, which contains the username.
+            // Return the subject claim containing the username.
             return signedJWT.getJWTClaimsSet().getSubject();
-
         } catch (ParseException e) {
             // Return null when the JWT format is invalid.
             return null;

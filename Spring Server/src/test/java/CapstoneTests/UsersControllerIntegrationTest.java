@@ -42,10 +42,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 // requests (GET, POST, PUT, PATCH, DELETE, HEAD) against the /api/users
 // endpoints and assert on both the HTTP status codes and response bodies.
 // Test users are prepared and cleaned up through UserService, while the
-// controller itself is always exercised through HTTP. In this way, the class
-// validates request mappings, URL paths, query parameters, JSON
+// controller itself is always exercised through HTTP. The repository layer
+// uses the real MongoDB-backed implementation configured by the application.
+// This class validates request mappings, URL paths, query parameters, JSON
 // serialization/deserialization and the complete controller-to-service-to-
 // repository integration from the client's point of view.
+//
+// MongoDB transaction and low-level concurrency invariants are tested in
+// CapstoneServicesIntegrationTest. This controller test focuses on the
+// public HTTP contract and end-to-end behavior.
 
 // RestTemplate is a Spring HTTP client that allows us to call REST endpoints
 // in a simple, type-safe way. Instead of manually opening connections,
@@ -74,8 +79,8 @@ public class UsersControllerIntegrationTest {
     @Autowired
     private UserService userService;
 
-    // Inject PasswordEncoder so test users that are inserted directly
-    // through UserService are stored with BCrypt passwords.
+    // Inject PasswordEncoder so tests can verify that stored BCrypt hashes
+    // match the original raw passwords.
     @Autowired
     private PasswordEncoder passwordEncoder;
 
@@ -112,23 +117,18 @@ public class UsersControllerIntegrationTest {
     // ---------------------------------------------------------------------
     // Creates a test user directly through UserService.
     //
-    // Because createUser() is a low-level creation method and does not
-    // perform authentication logic, the password is encoded here before
-    // the user is stored.
+    // UserService.createUser() is responsible for encoding the raw password
+    // with BCrypt before the user is sent to the repository.
     //
-    // This keeps test data consistent with real users created through
-    // the signup endpoint.
+    // Therefore this helper must pass the raw password exactly once.
+    // Pre-encoding it here would cause double BCrypt encoding.
     // ---------------------------------------------------------------------
     @SuppressWarnings("UnusedReturnValue")
-    private User createUserInFirebase(String username, String password) throws Exception {
-        // Create a new User object with the raw test password.
+    private User createTestUser(String username, String password) throws Exception {
+        // Build a test user containing the raw password.
         var user = buildUser(username, password);
 
-        // Encode the raw password with BCrypt before storing
-        // the user directly through UserService.
-        user.setPassword(passwordEncoder.encode(password));
-
-        // Persist the user.
+        // Persist the user through UserService.
         var future = userService.createUser(user);
 
         // Wait for the asynchronous operation to complete.
@@ -137,7 +137,7 @@ public class UsersControllerIntegrationTest {
         // Fail immediately if the test user could not be created.
         assertTrue(
                 created,
-                "Failed to create test user in Firebase: " + username
+                "Failed to create test user in the database: " + username
         );
 
         // Remember the username so it can be deleted after the tests.
@@ -145,12 +145,11 @@ public class UsersControllerIntegrationTest {
             createdUsernames.add(username);
         }
 
-        // Return the stored user object.
         return user;
     }
 
     // Helper method to delete a test user safely through UserService
-    private void deleteUserInFirebase(String username) {
+    private void deleteTestUser(String username) {
         try {
             // Call deleteUser on UserService
             var future = userService.deleteUser(username);
@@ -291,7 +290,7 @@ public class UsersControllerIntegrationTest {
     public void cleanupAllTestUsers() {
         // Iterate over a snapshot to avoid concurrent modification while cleaning up.
         for (String username : new ArrayList<>(this.createdUsernames)) {
-            deleteUserInFirebase(username);
+            deleteTestUser(username);
         }
     }
 
@@ -372,7 +371,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username.
         var username = "loginOk_" + System.currentTimeMillis();
         // Create the test user with a BCrypt encoded password.
-        createUserInFirebase(username, "pass1");
+        createTestUser(username, "pass1");
 
         // Build the login request.
         // Login requests must contain the raw password because
@@ -416,7 +415,7 @@ public class UsersControllerIntegrationTest {
         var username = "loginBad_" + System.currentTimeMillis();
 
         // Create the user with a BCrypt encoded password.
-        createUserInFirebase(username, "realPass");
+        createTestUser(username, "realPass");
 
         // Build a login request with an incorrect raw password.
         var loginRequestUser = new User();
@@ -444,7 +443,7 @@ public class UsersControllerIntegrationTest {
         var username = "allUsers_" + System.currentTimeMillis();
 
         // Create a BCrypt-backed test user.
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Public API returns UserResponse objects,
         // which intentionally do not expose passwords.
@@ -473,7 +472,7 @@ public class UsersControllerIntegrationTest {
         var username = "getUserOk_" + System.currentTimeMillis();
 
         // Create the user with a BCrypt encoded password.
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Perform a GET request and expect a UserResponse object.
         //
@@ -526,7 +525,7 @@ public class UsersControllerIntegrationTest {
         var username = "updateUserOk_" + System.currentTimeMillis();
 
         // Create the initial user with a BCrypt encoded password.
-        createUserInFirebase(username, "origPass");
+        createTestUser(username, "origPass");
 
         // Build the updated user object with a new raw password.
         //
@@ -622,7 +621,7 @@ public class UsersControllerIntegrationTest {
         var username = "patchUserOk_" + System.currentTimeMillis();
 
         // Create the initial user with a BCrypt encoded password.
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Create a map containing only the field that should be updated.
         Map<String, Object> updates = new HashMap<>();
@@ -667,7 +666,7 @@ public class UsersControllerIntegrationTest {
         var username = "patchPassword_" + System.currentTimeMillis();
 
         // Create the initial user with an existing BCrypt password.
-        createUserInFirebase(username, "oldPass");
+        createTestUser(username, "oldPass");
 
         // Create a partial update map containing a new raw password.
         Map<String, Object> updates = new HashMap<>();
@@ -709,7 +708,7 @@ public class UsersControllerIntegrationTest {
         // Assert that the raw password was not stored directly.
         assertNotEquals("patchedPass", storedUser.getPassword());
 
-        // Assert that the BCrypt hash stored in Firebase
+        // Assert that the stored BCrypt hash
         // correctly matches the new raw password.
         assertTrue(passwordEncoder.matches("patchedPass", storedUser.getPassword()));
 
@@ -779,7 +778,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "deleteUserOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Perform a DELETE request to /api/users/{username} expecting String body
         var response = this.restTemplate.exchange(
@@ -822,10 +821,10 @@ public class UsersControllerIntegrationTest {
     // Test that headUser returns 200 OK when user exists (no body)
     @Test
     public void headUser_existingUser_returns200() throws Exception {
-        // Build a unique username and create user in Firebase
+        // Build a unique username and create the user through UserService.
         var username = "headUserOk_" + System.currentTimeMillis();
         // Create this user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Perform a HEAD request to /api/users/{username} expecting no body
         var response = this.restTemplate.exchange(
@@ -869,7 +868,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "bmiOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Build URL with query parameter for bmi
         var url = "/api/users/" + username + "/bmi?bmi=23.5";
@@ -908,7 +907,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "waterOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Perform a GET request to read initial water values
         var beforeResponse = this.restTemplate.getForEntity(
@@ -993,7 +992,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "waterHistoryOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
         // Define how many days we want
         var days = 5;
         // Build URL for GET request with days query parameter
@@ -1038,7 +1037,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "weeklyAvgOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
         // add some water so at least one week has non-zero average
         var waterUrl = "/api/users/" + username + "/water?amount=300";
 
@@ -1103,7 +1102,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "goalOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
         // Define a valid goalMl value
         var newGoal = 3400;
         // Build URL for PUT request with goalMl parameter
@@ -1151,7 +1150,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "goalInvalid_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Build URL for PUT request with invalid goalMl value (too low)
         var url = "/api/users/" + username + "/goal?goalMl=100";
@@ -1202,7 +1201,7 @@ public class UsersControllerIntegrationTest {
         // Build a unique username for this test
         var username = "caloriesOk_" + System.currentTimeMillis();
         // Create the user through the service layer
-        createUserInFirebase(username, "p");
+        createTestUser(username, "p");
 
         // Build URL for initial GET request to calories endpoint
         var getInitialUrl = "/api/users/" + username + "/calories";

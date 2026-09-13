@@ -9,12 +9,11 @@ import java.util.concurrent.CompletableFuture;
 // -------------------------------------------------------------------------
 // Contains business logic related to global application statistics.
 //
-// This service depends on UserRepository and does not know that Firebase
-// is used as the database.
+// This service depends only on the UserRepository interface and does not
+// depend on a specific database or repository implementation.
 // -------------------------------------------------------------------------
 @Service
 public class StatisticsService {
-
     // Repository used to access user data for statistical operations.
     private final UserRepository userRepository;
 
@@ -32,7 +31,7 @@ public class StatisticsService {
     // The result contains the number of users in each BMI category.
     // ---------------------------------------------------------------------
     public CompletableFuture<Map<String, Integer>> getBmiDistribution() {
-        // Delegate the database operation to the repository.
+        // Delegate the data operation to the repository layer.
         return userRepository.getBmiDistribution();
     }
 }

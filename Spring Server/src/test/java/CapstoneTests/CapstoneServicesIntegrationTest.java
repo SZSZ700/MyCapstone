@@ -1,907 +1,977 @@
-// Define the package for this test class
 package CapstoneTests;
+
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import org.bson.Document;
+import org.bson.types.ObjectId;
 import org.example.CapstoneProject.Application;
-// Import assertion methods from JUnit Jupiter
+import org.example.CapstoneProject.model.User;
 import org.example.CapstoneProject.service.AuthenticationService;
 import org.example.CapstoneProject.service.StatisticsService;
 import org.example.CapstoneProject.service.UserHealthService;
 import org.example.CapstoneProject.service.UserService;
 import org.example.CapstoneProject.service.WaterService;
+import org.json.JSONObject;
 import org.junit.jupiter.api.AfterAll;
-// Import annotation to define methods that run before all tests
 import org.junit.jupiter.api.BeforeAll;
-// Import annotation for standard test methods
 import org.junit.jupiter.api.Test;
-// Import annotation to control test instance lifecycle (per class instead of per method)
 import org.junit.jupiter.api.TestInstance;
-// Import the TestInstance lifecycle enum
 import org.junit.jupiter.api.TestInstance.Lifecycle;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-// Import the SpringBootTest annotation to load the full Spring context
-import org.springframework.boot.test.context.SpringBootTest;
-// Import Autowired to inject Spring beans into the test class
 import org.springframework.beans.factory.annotation.Autowired;
-// Import static assertion methods for cleaner code
-import static org.junit.jupiter.api.Assertions.*;
-// Import the User model used by the service layer
-import org.example.CapstoneProject.model.User;
-// Import JSONObject used by getWater method
-import org.json.JSONObject;
-// Import standard Java concurrency utilities
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
-// Import date and time utilities for building expected date keys
-import java.text.SimpleDateFormat;
-import java.util.*;
+import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.crypto.password.PasswordEncoder;
-// CapstoneServicesIntegrationTest is an end-to-end integration test class that
-// verifies the behavior of the refactored service layer against a real Firebase
-// Realtime Database. Instead of calling the REST controllers, these tests
-// interact directly with the domain services to verify user, authentication,
-// water, health and statistics operations. The services delegate database
-// access to the repository layer, which uses the real Firebase implementation.
-// By running these tests we can detect issues related to data structure, paths,
-// serialization, asynchronous operations and integration between the service
-// and repository layers before the HTTP layer is involved.
 
-// Annotate this class as a Spring Boot integration test (loads the full application context)
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import static com.mongodb.client.model.Filters.eq;
+import static org.junit.jupiter.api.Assertions.*;
+
+// -------------------------------------------------------------------------
+// End-to-end service integration tests.
+//
+// These tests load the real Spring application context and exercise the
+// service layer together with the real repository implementation and MongoDB.
+//
+// The tests intentionally call the services instead of the REST controller.
+// This lets the suite verify:
+//
+// - user creation, update and deletion
+// - BCrypt password handling
+// - signup and login behavior
+// - water history
+// - calorie history
+// - water goals
+// - BMI statistics
+// - MongoDB document relationships
+// - MongoDB transactionVersion behavior
+// - transaction-based deletion of related documents
+// - concurrency between delete and user-related writes
+//
+// IMPORTANT:
+// MongoDB transactions require the MongoDB server used by these tests
+// to run as a replica set. A standalone MongoDB server cannot execute
+// the transaction-based repository methods.
+// -------------------------------------------------------------------------
+@SuppressWarnings("FieldCanBeLocal")
 @SpringBootTest(classes = Application.class)
-// Use a single test instance for the whole class so @BeforeAll and @AfterAll can be non-static
 @TestInstance(Lifecycle.PER_CLASS)
 @Execution(ExecutionMode.SAME_THREAD)
 public class CapstoneServicesIntegrationTest {
+    // ---------------------------------------------------------------------
+    // Real application services injected from the Spring context.
+    // ---------------------------------------------------------------------
 
-    // Inject the real UserService bean from the Spring context.
     @Autowired
     private UserService userService;
 
-    // Inject the real AuthenticationService bean from the Spring context.
     @Autowired
     private AuthenticationService authenticationService;
 
-    // Inject the real WaterService bean from the Spring context.
     @Autowired
     private WaterService waterService;
 
-    // Inject the real UserHealthService bean from the Spring context.
     @Autowired
     private UserHealthService userHealthService;
 
-    // Inject the real StatisticsService bean from the Spring context.
     @Autowired
     private StatisticsService statisticsService;
 
-    // Inject the password encoder used by the application.
+    // PasswordEncoder is used only to verify that stored BCrypt hashes
+    // match the original raw passwords.
     //
-    // Integration tests that create users directly through UserService
-    // must encode their passwords before storing them in Firebase.
+    // UserService and AuthenticationService are responsible for performing
+    // the actual BCrypt encoding before persistence.
     @Autowired
     private PasswordEncoder passwordEncoder;
 
-    // Per-run usernames for shared baseline users.
+    // Raw MongoDatabase access is used only by integration tests that must
+    // inspect MongoDB-specific state such as ObjectId relationships,
+    // transactionVersion and related collection documents.
+    @Autowired
+    private MongoDatabase mongoDatabase;
+
+    // Per-run usernames for the two shared baseline users.
     private String TEST_USERNAME_1;
     private String TEST_USERNAME_2;
 
-    // Track all test-created users so cleanup still works even if a test fails midway.
-    private final Set<String> createdUsernames = Collections.synchronizedSet(new HashSet<>());
+    // Track all users created by this test class so cleanup can still run
+    // even if an individual test fails before deleting its temporary user.
+    private final Set<String> createdUsernames =
+            Collections.synchronizedSet(new HashSet<>());
 
-    // Store the main test user object for convenience
-    @SuppressWarnings("FieldCanBeLocal")
     private User testUser1;
-
-    // Store the second test user object for convenience
-    @SuppressWarnings("FieldCanBeLocal")
     private User testUser2;
 
-    // --------------------------- TEST LIFECYCLE ---------------------------
+    // ---------------------------------------------------------------------
+    // TEST LIFECYCLE
+    // ---------------------------------------------------------------------
 
     // ---------------------------------------------------------------------
-    // Creates a user directly through UserService for integration tests.
+    // Creates a user directly through UserService.
     //
-    // UserService.createUser() does not perform authentication logic,
-    // therefore the raw password must be encoded here before the user
-    // is stored in Firebase.
+    // IMPORTANT:
+    // UserService.createUser() now performs BCrypt encoding itself.
     //
-    // This keeps directly created test users consistent with users
-    // created through the real signup flow.
+    // Therefore this helper must receive a User containing the RAW password.
+    // The test must not pre-encode the password, otherwise the password would
+    // be BCrypt-encoded twice.
     // ---------------------------------------------------------------------
     private void createUserOrFail(User user) throws Exception {
-        // Read the raw password from the test user.
-        var rawPassword = user.getPassword();
 
-        // Encode the password before storing the user.
-        if (rawPassword != null) {
-            user.setPassword(passwordEncoder.encode(rawPassword));
-        }
-
-        // Create the user through UserService.
         CompletableFuture<Boolean> future = userService.createUser(user);
 
-        // Wait for the asynchronous creation result.
         Boolean created = future.get(20, TimeUnit.SECONDS);
 
-        // Assert that the user was created successfully.
-        assertTrue(created,
+        assertTrue(
+                created,
                 "Failed to create test user: " + user.getUserName()
         );
 
-        // Remember the username for cleanup.
         createdUsernames.add(user.getUserName());
     }
 
-    // This method will run once before all tests in this class
+    // ---------------------------------------------------------------------
+    // Returns the MongoDB users collection.
+    // ---------------------------------------------------------------------
+    private MongoCollection<Document> usersCollection() {
+        return mongoDatabase.getCollection("users");
+    }
+
+    // ---------------------------------------------------------------------
+    // Returns the MongoDB water_records collection.
+    // ---------------------------------------------------------------------
+    private MongoCollection<Document> waterRecordsCollection() {
+        return mongoDatabase.getCollection("water_records");
+    }
+
+    // ---------------------------------------------------------------------
+    // Returns the MongoDB calories collection.
+    // ---------------------------------------------------------------------
+    private MongoCollection<Document> caloriesCollection() {
+        return mongoDatabase.getCollection("calories");
+    }
+
+    // ---------------------------------------------------------------------
+    // Returns the MongoDB goals collection.
+    // ---------------------------------------------------------------------
+    private MongoCollection<Document> goalsCollection() {
+        return mongoDatabase.getCollection("goals");
+    }
+
+    // ---------------------------------------------------------------------
+    // Resolves a username into its MongoDB ObjectId.
+    //
+    // Returns null when no matching user exists.
+    // ---------------------------------------------------------------------
+    private ObjectId getUserIdFromMongo(String username) {
+
+        Document document = usersCollection().find(
+                eq("username", username)
+        ).first();
+
+        if (document == null) { return null; }
+
+        return document.getObjectId("_id");
+    }
+
+    // ---------------------------------------------------------------------
+    // Reads the internal transactionVersion field from the user document.
+    //
+    // The field is used by repository write transactions so operations such
+    // as delete, water updates, calorie updates and goal updates write to the
+    // same user document and therefore participate in MongoDB write-conflict
+    // detection.
+    //
+    // Returns -1 when the user does not exist.
+    // ---------------------------------------------------------------------
+    private long getTransactionVersion(String username) {
+
+        Document document = usersCollection().find(
+                eq("username", username)
+        ).first();
+
+        if (document == null) { return -1; }
+
+        Number version = document.get("transactionVersion", Number.class);
+
+        return version == null ? 0 : version.longValue();
+    }
+
     @BeforeAll
     void setUpTestUsers() throws Exception {
+
         String runId = String.valueOf(System.currentTimeMillis());
+
         TEST_USERNAME_1 = "integrationUser1_" + runId;
         TEST_USERNAME_2 = "integrationUser2_" + runId;
 
-        // Create a new User instance for the first test user
         testUser1 = new User();
-        // Set the username for the first test user
         testUser1.setUserName(TEST_USERNAME_1);
-        // Set a password for the first test user
         testUser1.setPassword("pass1");
 
-        // Create a new User instance for the second test user
         testUser2 = new User();
-        // Set the username for the second test user
         testUser2.setUserName(TEST_USERNAME_2);
-        // Set a password for the second test user
         testUser2.setPassword("pass2");
 
         createUserOrFail(testUser1);
         createUserOrFail(testUser2);
     }
 
-    // This method will run once after all tests in this class
     @AfterAll
     void cleanUpTestUsers() {
+
         for (String username : new ArrayList<>(createdUsernames)) {
+
             try {
                 userService.deleteUser(username).get(20, TimeUnit.SECONDS);
             } catch (Exception e) {
-                System.out.println("WARN cleanup failed for username=" + username
-                        + " message=" + e.getMessage());
+                System.out.println(
+                        "WARN cleanup failed for username=" +
+                                username +
+                                " message=" +
+                                e.getMessage()
+                );
             }
         }
     }
 
-    // --------------------------- SIGNUP / CREATE / DELETE ---------------------------
+    // ---------------------------------------------------------------------
+    // SIGNUP / CREATE / DELETE TESTS
+    // ---------------------------------------------------------------------
 
-    // Test that signup creates a new user with a BCrypt password
-    // and rejects duplicate usernames.
+    // ---------------------------------------------------------------------
+    // Verifies that signup:
+    // - creates a new user
+    // - stores a BCrypt hash instead of the raw password
+    // - rejects a duplicate username
+    // ---------------------------------------------------------------------
     @Test
     void signup_createsNewUserAndRejectsDuplicate() throws Exception {
-        // Build a unique username for this test.
-        String uniqueUsername = "signupUser_" + System.currentTimeMillis();
-        // Keep the raw password that a real client would provide.
+
+        String uniqueUsername =
+                "signupUser_" + System.currentTimeMillis();
+
         String rawPassword = "signupPass";
-        // Create a new user for the signup flow.
+
         User signupUser = new User();
-        // Set the username.
         signupUser.setUserName(uniqueUsername);
-        // Set the raw password.
         signupUser.setPassword(rawPassword);
-        // Set the full name.
         signupUser.setFullName("Sasa li");
-        // Set the age.
         signupUser.setAge(25);
 
-        // Call the real signup service.
-        CompletableFuture<String> resultFuture = authenticationService.signup(signupUser);
+        String firstResult = authenticationService
+                .signup(signupUser)
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the signup result.
-        String firstResult = resultFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that signup succeeded.
         assertEquals("User created successfully", firstResult);
 
-        // Remember the created username for cleanup.
         createdUsernames.add(uniqueUsername);
 
-        // Read the stored user directly from Firebase.
-        User storedUser = userService.getUser(uniqueUsername)
-                        .get(20, TimeUnit.SECONDS);
+        User storedUser = userService
+                .getUser(uniqueUsername)
+                .get(20, TimeUnit.SECONDS);
 
-        // Assert that the user exists.
         assertNotNull(storedUser);
-        // Assert that the raw password was not stored directly.
         assertNotEquals(rawPassword, storedUser.getPassword());
+        assertTrue(
+                passwordEncoder.matches(
+                        rawPassword,
+                        storedUser.getPassword()
+                )
+        );
 
-        // Assert that the stored BCrypt hash matches
-        // the original raw password.
-        assertTrue(passwordEncoder.matches(rawPassword, storedUser.getPassword()));
+        String secondResult = authenticationService
+                .signup(signupUser)
+                .get(20, TimeUnit.SECONDS);
 
-        // Call signup again with the same username.
-        CompletableFuture<String> duplicateFuture = authenticationService.signup(signupUser);
-
-        // Wait for the duplicate signup result.
-        String secondResult = duplicateFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that duplicate usernames are rejected.
         assertEquals("Username already exists", secondResult);
     }
 
-    // Test that createUser, exists and deleteUser work consistently
-    // while directly created users store BCrypt passwords.
+    // ---------------------------------------------------------------------
+    // Verifies concurrent signup protection.
+    //
+    // Two signup requests try to create the same username at the same time.
+    //
+    // Expected:
+    // - exactly one request succeeds
+    // - the other request reports that the username already exists
+    // - MongoDB contains exactly one document with that username
+    //
+    // The UNIQUE username index is the final protection against the race.
+    // ---------------------------------------------------------------------
     @Test
-    void createUser_existsAndDeleteUser_flowWorks() throws Exception {
-        // Build a temporary username for this test.
-        String tempUsername = "tempUser_" + System.currentTimeMillis();
-        // Keep the original raw password.
-        String rawPassword = "tempPass";
-        // Create the temporary user.
-        User tempUser = new User();
-        // Set the username.
-        tempUser.setUserName(tempUsername);
-        // Encode the password before calling createUser directly.
-        tempUser.setPassword(passwordEncoder.encode(rawPassword));
-        // Set the full name.
-        tempUser.setFullName("Sasa li");
-        // Set the age.
-        tempUser.setAge(25);
+    void signup_concurrentDuplicateRequests_onlyOneUserIsCreated() throws Exception {
 
-        // Create the user directly through UserService.
-        CompletableFuture<Boolean> createFuture = userService.createUser(tempUser);
+        String username =
+                "concurrentSignup_" + System.currentTimeMillis();
 
-        // Wait for the creation result.
-        Boolean created = createFuture.get(20, TimeUnit.SECONDS);
+        User userA = new User();
+        userA.setUserName(username);
+        userA.setPassword("passA");
 
-        // Assert that creation succeeded.
-        assertTrue(created);
+        User userB = new User();
+        userB.setUserName(username);
+        userB.setPassword("passB");
 
-        // Remember the user for cleanup.
-        createdUsernames.add(tempUsername);
+        CountDownLatch start = new CountDownLatch(1);
 
-        // Read the stored user.
-        User storedUser = userService.getUser(tempUsername)
-                        .get(20, TimeUnit.SECONDS);
+        CompletableFuture<String> requestA =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
 
-        // Assert that the user exists.
-        assertNotNull(storedUser);
-        // Assert that the raw password was not stored.
-        assertNotEquals(rawPassword, storedUser.getPassword());
-        // Assert that the stored BCrypt password matches the raw password.
-        assertTrue(passwordEncoder.matches(rawPassword, storedUser.getPassword()));
+                        return authenticationService
+                                .signup(userA)
+                                .get(20, TimeUnit.SECONDS);
 
-        // Check that the user exists.
-        CompletableFuture<Boolean> existsFuture = userService.exists(tempUsername);
-        Boolean exists = existsFuture.get(20, TimeUnit.SECONDS);
-        assertTrue(exists);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
 
-        // Delete the user.
-        CompletableFuture<Boolean> deleteFuture = userService.deleteUser(tempUsername);
-        Boolean deleted = deleteFuture.get(20, TimeUnit.SECONDS);
-        assertTrue(deleted);
+        CompletableFuture<String> requestB =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
 
-        // Verify that the user no longer exists.
-        CompletableFuture<Boolean> existsAfterDeleteFuture = userService.exists(tempUsername);
-        Boolean existsAfterDelete = existsAfterDeleteFuture.get(20, TimeUnit.SECONDS);
-        assertFalse(existsAfterDelete);
+                        return authenticationService
+                                .signup(userB)
+                                .get(20, TimeUnit.SECONDS);
+
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+
+        start.countDown();
+
+        String resultA = requestA.get(20, TimeUnit.SECONDS);
+        String resultB = requestB.get(20, TimeUnit.SECONDS);
+
+        int successCount = 0;
+        int duplicateCount = 0;
+
+        if ("User created successfully".equals(resultA)) { successCount++; }
+        if ("User created successfully".equals(resultB)) { successCount++; }
+
+        if ("Username already exists".equals(resultA)) { duplicateCount++; }
+        if ("Username already exists".equals(resultB)) { duplicateCount++; }
+
+        assertEquals(1, successCount);
+        assertEquals(1, duplicateCount);
+
+        assertEquals(
+                1,
+                usersCollection().countDocuments(
+                        eq("username", username)
+                )
+        );
+
+        createdUsernames.add(username);
     }
 
-    // --------------------------- GET USER NEGATIVE TEST ---------------------------
-    // Test that getUser returns null for a username that does not exist in Firebase
+    // ---------------------------------------------------------------------
+    // Verifies direct user creation, existence checking and deletion.
+    //
+    // UserService receives the RAW password and performs BCrypt encoding.
+    // ---------------------------------------------------------------------
+    @Test
+    void createUser_existsAndDeleteUser_flowWorks() throws Exception {
+
+        String tempUsername =
+                "tempUser_" + System.currentTimeMillis();
+
+        String rawPassword = "tempPass";
+
+        User tempUser = new User();
+        tempUser.setUserName(tempUsername);
+        tempUser.setPassword(rawPassword);
+        tempUser.setFullName("Sasa li");
+        tempUser.setAge(25);
+
+        Boolean created = userService
+                .createUser(tempUser)
+                .get(20, TimeUnit.SECONDS);
+
+        assertTrue(created);
+
+        createdUsernames.add(tempUsername);
+
+        User storedUser = userService
+                .getUser(tempUsername)
+                .get(20, TimeUnit.SECONDS);
+
+        assertNotNull(storedUser);
+        assertNotEquals(rawPassword, storedUser.getPassword());
+        assertTrue(
+                passwordEncoder.matches(
+                        rawPassword,
+                        storedUser.getPassword()
+                )
+        );
+
+        assertTrue(
+                userService
+                        .exists(tempUsername)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        assertTrue(
+                userService
+                        .deleteUser(tempUsername)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        assertFalse(
+                userService
+                        .exists(tempUsername)
+                        .get(20, TimeUnit.SECONDS)
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // Verifies that getUser returns null for a username that does not exist.
+    // ---------------------------------------------------------------------
     @Test
     void getUser_nonExisting_returnsNull() throws Exception {
-        // Build a username that should not exist in Firebase
-        String missingUsername = "getUserNoSuch_" + System.currentTimeMillis();
 
-        // Call getUser for this missing username
-        CompletableFuture<User> future =
-                userService.getUser(missingUsername);
-        // Wait for the getUser result with a timeout of 20 seconds
-        User result = future.get(20, TimeUnit.SECONDS);
-        // Assert that no user object was found
+        String missingUsername =
+                "getUserNoSuch_" + System.currentTimeMillis();
+
+        User result = userService
+                .getUser(missingUsername)
+                .get(20, TimeUnit.SECONDS);
+
         assertNull(result);
     }
 
-    // --------------------------- UPDATE USER FULL RECORD TEST ---------------------------
+    // ---------------------------------------------------------------------
+    // USER UPDATE TESTS
+    // ---------------------------------------------------------------------
 
-    // --------------------------- UPDATE USER EXISTING TEST ---------------------------
-    // Test that updateUser updates the editable fields,
-    // stores the new password as BCrypt and returns the complete user.
+    // ---------------------------------------------------------------------
+    // Verifies that updateUser:
+    // - updates password, fullName and age
+    // - stores the new password as BCrypt
+    // - keeps the username unchanged
+    // - returns the complete updated user
+    // ---------------------------------------------------------------------
     @Test
     void updateUser_existing_updatesEditableFieldsAndReturnsUpdatedUser()
             throws Exception {
-        // Build a unique username for this test.
-        String tempUsername = "updateUserDeep_" + System.currentTimeMillis();
 
-        // Create the original user.
+        String tempUsername =
+                "updateUserDeep_" + System.currentTimeMillis();
+
         User originalUser = new User();
-        // Set the username.
         originalUser.setUserName(tempUsername);
-        // Set the raw original password.
         originalUser.setPassword("origPass");
-        // Set the original full name.
         originalUser.setFullName("Original Name");
-        // Set the original age.
         originalUser.setAge(20);
 
-        // Create the user using the BCrypt-aware helper.
         createUserOrFail(originalUser);
 
-        // Create the updated user object.
         User updatedUser = new User();
-        // Keep the same username.
         updatedUser.setUserName(tempUsername);
-        // Send a new raw password.
-        // UserService.updateUser() is responsible for encoding it.
         updatedUser.setPassword("newPass");
-        // Set the new full name.
         updatedUser.setFullName("Updated Name");
-        // Set the new age.
         updatedUser.setAge(30);
 
-        // Update the user.
-        CompletableFuture<User> updateFuture =
-                userService.updateUser(
-                        tempUsername,
-                        updatedUser
-                );
+        User updated = userService
+                .updateUser(tempUsername, updatedUser)
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the update result.
-        User updated = updateFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that a user was returned.
         assertNotNull(updated);
-
-        // Assert that the username remains unchanged.
         assertEquals(tempUsername, updated.getUserName());
-        // Assert that plaintext was not returned from the stored model.
         assertNotEquals("newPass", updated.getPassword());
 
-        // Assert that the returned BCrypt hash matches the new password.
         assertTrue(
-                passwordEncoder.matches("newPass", updated.getPassword())
+                passwordEncoder.matches(
+                        "newPass",
+                        updated.getPassword()
+                )
         );
 
-        // Assert that the full name was updated.
         assertEquals("Updated Name", updated.getFullName());
-        // Assert that the age was updated.
         assertEquals(30, updated.getAge());
 
-        // Read the user again directly from Firebase.
-        CompletableFuture<User> getFuture = userService.getUser(tempUsername);
+        User fromDb = userService
+                .getUser(tempUsername)
+                .get(20, TimeUnit.SECONDS);
 
-        User fromDb = getFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that the stored user exists.
         assertNotNull(fromDb);
-
-        // Assert that Firebase does not contain the raw new password.
         assertNotEquals("newPass", fromDb.getPassword());
 
-        // Assert that the stored BCrypt password matches newPass.
         assertTrue(
-                passwordEncoder.matches("newPass", fromDb.getPassword())
+                passwordEncoder.matches(
+                        "newPass",
+                        fromDb.getPassword()
+                )
         );
-        // Assert that the updated full name was persisted.
+
         assertEquals("Updated Name", fromDb.getFullName());
-        // Assert that the updated age was persisted.
         assertEquals(30, fromDb.getAge());
-        // Assert that the old raw password is no longer stored.
         assertNotEquals("origPass", fromDb.getPassword());
-        // Assert that the old full name is gone.
         assertNotEquals("Original Name", fromDb.getFullName());
-        // Assert that the old age is gone.
         assertNotEquals(20, fromDb.getAge());
 
-        // Delete the temporary user.
-        CompletableFuture<Boolean> deleteFuture = userService.deleteUser(tempUsername);
-        Boolean deleted = deleteFuture.get(20, TimeUnit.SECONDS);
-        // Assert that cleanup succeeded.
-        assertTrue(deleted);
+        assertTrue(
+                userService
+                        .deleteUser(tempUsername)
+                        .get(20, TimeUnit.SECONDS)
+        );
     }
 
-
-    // --------------------------- UPDATE USER NON-EXISTING TEST ---------------------------
-    // Test that updateUser returns null when trying to update a non-existing user.
+    // ---------------------------------------------------------------------
+    // Verifies that updating a missing user returns null.
+    // ---------------------------------------------------------------------
     @Test
     void updateUser_nonExisting_returnsNull() throws Exception {
 
-        // Build a username that should not exist in Firebase.
         String missingUsername =
                 "updateUserNoSuch_" + System.currentTimeMillis();
 
-        // Create a User instance with this missing username.
         User candidate = new User();
-
-        // Set the username for the candidate user.
         candidate.setUserName(missingUsername);
-
-        // Set a password for the candidate user.
         candidate.setPassword("somePass");
-
-        // Set a full name for the candidate user.
         candidate.setFullName("Some Name");
-
-        // Set an age for the candidate user.
         candidate.setAge(40);
 
-        // Call updateUser for this missing username.
-        CompletableFuture<User> updateFuture =
-                userService.updateUser(missingUsername, candidate);
+        User updated = userService
+                .updateUser(missingUsername, candidate)
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the update result with a timeout of 20 seconds.
-        User updated = updateFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that null was returned because the user does not exist.
         assertNull(updated);
 
-        // Verify that getUser still returns null for this username.
-        CompletableFuture<User> getFuture =
-                userService.getUser(missingUsername);
+        User fromDb = userService
+                .getUser(missingUsername)
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the getUser result with a timeout of 20 seconds.
-        User fromDb = getFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that no user object exists in Firebase for this username.
         assertNull(fromDb);
     }
 
-    // --------------------------- LOGIN TESTS ---------------------------
+    // ---------------------------------------------------------------------
+    // LOGIN TESTS
+    // ---------------------------------------------------------------------
 
-    // Test that login returns a valid User object when
-    // the raw password matches the stored BCrypt password.
+    // ---------------------------------------------------------------------
+    // Verifies successful login using a raw password against the stored
+    // BCrypt hash.
+    // ---------------------------------------------------------------------
     @Test
     void login_withCorrectCredentials_returnsUser() throws Exception {
 
-        // Login using the raw password that belongs
-        // to the first baseline test user.
-        CompletableFuture<User> loginFuture = authenticationService.login(
-                        TEST_USERNAME_1,
-                        "pass1"
-        );
+        User loggedUser = authenticationService
+                .login(TEST_USERNAME_1, "pass1")
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the authentication result.
-        User loggedUser = loginFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that authentication succeeded.
         assertNotNull(loggedUser);
-        // Assert that the correct user was returned.
         assertEquals(TEST_USERNAME_1, loggedUser.getUserName());
-        // The stored password must not equal the raw password.
         assertNotEquals("pass1", loggedUser.getPassword());
 
-        // Verify that the stored BCrypt hash matches
-        // the raw password used during login.
         assertTrue(
-                passwordEncoder.matches("pass1", loggedUser.getPassword())
+                passwordEncoder.matches(
+                        "pass1",
+                        loggedUser.getPassword()
+                )
         );
     }
 
-
-    // Test that login returns null when the provided raw password
-    // does not match the user's stored BCrypt password.
+    // ---------------------------------------------------------------------
+    // Verifies that login fails when the raw password is incorrect.
+    // ---------------------------------------------------------------------
     @Test
     void login_withWrongPassword_returnsNull() throws Exception {
-        // Attempt login with the correct username
-        // but an incorrect raw password.
-        CompletableFuture<User> loginFuture =
-                authenticationService.login(
-                        TEST_USERNAME_1,
-                        "wrongPass"
-                );
 
-        // Wait for the authentication result.
-        User loggedUser = loginFuture.get(20, TimeUnit.SECONDS);
+        User loggedUser = authenticationService
+                .login(TEST_USERNAME_1, "wrongPass")
+                .get(20, TimeUnit.SECONDS);
 
-        // Assert that authentication failed.
         assertNull(loggedUser);
     }
 
+    // ---------------------------------------------------------------------
+    // WATER MODULE TESTS
+    // ---------------------------------------------------------------------
 
-    // --------------------------- WATER MODULE TESTS ---------------------------
-
-    // Test that updateWater increases today's total and getWater reflects the change
+    // ---------------------------------------------------------------------
+    // Verifies that updateWater inserts a new water record and that both
+    // getWater() and getWaterHistoryMap() reflect the new amount.
+    // ---------------------------------------------------------------------
     @Test
-    void updateWater_increasesTodayTotal_and_getWaterIsConsistent() throws Exception {
-        // Call getWater to read today's and yesterday's values before the update
-        CompletableFuture<JSONObject> beforeFuture = waterService.getWater(TEST_USERNAME_1);
-        // Wait for the JSON result with a timeout of 20 seconds
-        JSONObject beforeJson = beforeFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the JSON object is not null
+    void updateWater_increasesTodayTotal_and_getWaterIsConsistent()
+            throws Exception {
+
+        JSONObject beforeJson = waterService
+                .getWater(TEST_USERNAME_1)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(beforeJson);
-        // Extract today's water amount from the JSON object
+
         long todayBefore = beforeJson.getLong("todayWater");
 
-        // Define the amount of water to add in this test
         int addedAmount = 500;
 
-        // Call updateWater to add the new amount for the given user
-        CompletableFuture<Boolean> updateFuture = waterService.updateWater(TEST_USERNAME_1, addedAmount);
-        // Wait for the update result with a timeout of 20 seconds
-        Boolean updated = updateFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the update operation succeeded
+        Boolean updated = waterService
+                .updateWater(TEST_USERNAME_1, addedAmount)
+                .get(20, TimeUnit.SECONDS);
+
         assertTrue(updated);
 
-        // Call getWater again to read the updated values
-        CompletableFuture<JSONObject> afterFuture = waterService.getWater(TEST_USERNAME_1);
-        // Wait for the updated JSON result with a timeout of 20 seconds
-        JSONObject afterJson = afterFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the JSON object is not null
+        JSONObject afterJson = waterService
+                .getWater(TEST_USERNAME_1)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(afterJson);
-        // Extract today's water amount after the update
+
         long todayAfter = afterJson.getLong("todayWater");
 
-        // Assert that today's water increased exactly by the added amount
         assertEquals(todayBefore + addedAmount, todayAfter);
 
-        // Build today's date key in the same format used by WaterService
-        String todayKey = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(new Date());
+        String todayKey = LocalDate.now().toString();
 
-        // Call getWaterHistoryMap for the last 3 days for this user
-        CompletableFuture<Map<String, Long>> historyFuture =
-                waterService.getWaterHistoryMap(TEST_USERNAME_1, 3);
-        // Wait for the history map result with a timeout of 20 seconds
-        Map<String, Long> history = historyFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the history map is not null
+        Map<String, Long> history = waterService
+                .getWaterHistoryMap(TEST_USERNAME_1, 3)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(history);
-        // Assert that the history map contains exactly 3 entries (for 3 days)
         assertEquals(3, history.size());
-
-        // Assert that the map contains an entry for today's date key
         assertTrue(history.containsKey(todayKey));
-        // Assert that the value in the map for today equals today's water total we observed
         assertEquals(todayAfter, history.get(todayKey));
     }
 
-    // Test for a "fresh" user, history map should contain only zeros for all requested days
+    // ---------------------------------------------------------------------
+    // Verifies that a fresh user has zero water totals for all requested
+    // history days.
+    // ---------------------------------------------------------------------
     @Test
-    void getWaterHistoryMap_forNewUser_returnsAllZerosWithExpectedKeys() throws Exception {
-        // Choose the number of days we want to request in the history map
-        int days = 7;
-        // Create a date formatter that matches the format used by WaterService ("yyyy-MM-dd")
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault());
-        // Create a Calendar instance initialized to "now" (today)
-        Calendar cal = Calendar.getInstance();
+    void getWaterHistoryMap_forNewUser_returnsAllZerosWithExpectedKeys()
+            throws Exception {
 
-        // Create a LinkedHashMap to store the expected result (keeps insertion order)
+        int days = 7;
+
         Map<String, Long> expected = new LinkedHashMap<>();
-        // Generate the last `days` date keys and put 0L for each (new user has no water logs)
+
+        LocalDate today = LocalDate.now();
+
         for (int i = 0; i < days; i++) {
-            // Format the current calendar date to the string key
-            String dateKey = sdf.format(cal.getTime());
-            // Put this date key with a value of 0 (no water logged) into the expected map
-            expected.put(dateKey, 0L);
-            // Move the calendar one day backwards
-            cal.add(Calendar.DAY_OF_YEAR, -1);
+            expected.put(
+                    today.minusDays(i).toString(),
+                    0L
+            );
         }
 
-        // Call the service to get the actual water history map for the second test user
-        CompletableFuture<Map<String, Long>> future =
-                waterService.getWaterHistoryMap(TEST_USERNAME_2, days);
-        // Wait for the asynchronous result with a timeout of 20 seconds
-        Map<String, Long> actual = future.get(20, TimeUnit.SECONDS);
-        // Assert that the actual map is not null
+        Map<String, Long> actual = waterService
+                .getWaterHistoryMap(TEST_USERNAME_2, days)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(actual);
-        // Assert that the actual map is exactly equal to the expected map (keys and values)
         assertEquals(expected, actual);
     }
 
-    // Test that a "fresh" user (second test user) with no water updates returns zeros
+    // ---------------------------------------------------------------------
+    // Verifies that a fresh user with no water records returns zero for
+    // both today and yesterday.
+    // ---------------------------------------------------------------------
     @Test
     void getWater_forNewUser_returnsZeroTotals() throws Exception {
-        // Call getWater for the second test user (assuming no water updates done yet)
-        CompletableFuture<JSONObject> future = waterService.getWater(TEST_USERNAME_2);
-        // Wait for the JSON result with a timeout of 20 seconds
-        JSONObject json = future.get(20, TimeUnit.SECONDS);
-        // Assert that the JSON object is not null (service returns an object, not null)
+
+        JSONObject json = waterService
+                .getWater(TEST_USERNAME_2)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(json);
-        // Extract today's water amount from the JSON object
-        long today = json.getLong("todayWater");
-        // Extract yesterday's water amount from the JSON object
-        long yesterday = json.getLong("yesterdayWater");
-        // Assert that today's water is zero for a new user
-        assertEquals(0, today);
-        // Assert that yesterday's water is also zero for a new user
-        assertEquals(0, yesterday);
+        assertEquals(0, json.getLong("todayWater"));
+        assertEquals(0, json.getLong("yesterdayWater"));
     }
 
+    // ---------------------------------------------------------------------
+    // Verifies the MongoDB date-range behavior used by getWater().
+    //
+    // The test inserts one record for today and one for yesterday directly
+    // into MongoDB, then verifies that the service places each amount into
+    // the correct day.
+    // ---------------------------------------------------------------------
+    @Test
+    void getWater_withTodayAndYesterdayMongoRecords_returnsCorrectTotals()
+            throws Exception {
 
-    // add test: (add water amount for today and yesterday in the firebase ofc)
-    // and check if we recive the same amounts for each day (yeaterday & tomorow)
+        String username =
+                "waterDateTest_" + System.currentTimeMillis();
 
-    // --------------------------- GOAL MODULE TESTS ---------------------------
+        User user = new User();
+        user.setUserName(username);
+        user.setPassword("waterDatePass");
 
-    // Test that updateGoalMl changes the goal and getGoalMl reads the updated value
+        createUserOrFail(user);
+
+        ObjectId userId = getUserIdFromMongo(username);
+
+        assertNotNull(userId);
+
+        LocalDate today = LocalDate.now();
+        LocalDate yesterday = today.minusDays(1);
+
+        Date todayTime = Date.from(
+                today
+                        .atTime(12, 0)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+        );
+
+        Date yesterdayTime = Date.from(
+                yesterday
+                        .atTime(12, 0)
+                        .atZone(ZoneId.systemDefault())
+                        .toInstant()
+        );
+
+        waterRecordsCollection().insertOne(
+                new Document("userId", userId)
+                        .append("amountMl", 700)
+                        .append("recordedAt", todayTime)
+        );
+
+        waterRecordsCollection().insertOne(
+                new Document("userId", userId)
+                        .append("amountMl", 400)
+                        .append("recordedAt", yesterdayTime)
+        );
+
+        JSONObject result = waterService
+                .getWater(username)
+                .get(20, TimeUnit.SECONDS);
+
+        assertNotNull(result);
+        assertEquals(700, result.getLong("todayWater"));
+        assertEquals(400, result.getLong("yesterdayWater"));
+    }
+
+    // ---------------------------------------------------------------------
+    // GOAL MODULE TESTS
+    // ---------------------------------------------------------------------
+
+    // ---------------------------------------------------------------------
+    // Verifies that updateGoalMl changes today's goal and that getGoalMl
+    // reads the same value.
+    // ---------------------------------------------------------------------
     @Test
     void updateGoalMl_changesGoal_and_getGoalMlReadsIt() throws Exception {
-        // Choose a valid goal value in the allowed range (between 500 and 10000)
+
         int newGoal = 3200;
 
-        // Call updateGoalMl to set the new goal for the main test user
-        CompletableFuture<Boolean> updateFuture =
-                waterService.updateGoalMl(TEST_USERNAME_1, newGoal);
-        // Wait for the update result with a timeout of 20 seconds
-        Boolean updated = updateFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the update operation returned true
+        Boolean updated = waterService
+                .updateGoalMl(TEST_USERNAME_1, newGoal)
+                .get(20, TimeUnit.SECONDS);
+
         assertTrue(updated);
 
-        // Call getGoalMl to read the goal for the same user
-        CompletableFuture<Integer> getFuture =
-                waterService.getGoalMl(TEST_USERNAME_1);
-        // Wait for the goal result with a timeout of 20 seconds
-        Integer goalValue = getFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the returned goal is not null
+        Integer goalValue = waterService
+                .getGoalMl(TEST_USERNAME_1)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(goalValue);
-        // Assert that the returned goal equals the value we set
         assertEquals(newGoal, goalValue.intValue());
     }
 
-    // Test that updateGoalMl rejects out-of-range values and does not change the stored goal
+    // ---------------------------------------------------------------------
+    // Verifies that invalid goal values are rejected and do not change the
+    // user's stored goal.
+    // ---------------------------------------------------------------------
     @Test
-    void updateGoalMl_outOfRange_isRejectedAndValueNotChanged() throws Exception {
-        // Build a unique username for this test run
-        String username = "goalInvalidDeep_" + System.currentTimeMillis();
+    void updateGoalMl_outOfRange_isRejectedAndValueNotChanged()
+            throws Exception {
 
-        // Create a new User instance for this test
+        String username =
+                "goalInvalidDeep_" + System.currentTimeMillis();
+
         User user = new User();
-        // Set username for the test user
         user.setUserName(username);
-        // Encode the password with BCrypt before storing the user directly
-        // through UserService.createUser().
-        user.setPassword(passwordEncoder.encode("p"));
+        user.setPassword("p");
 
-        // Create the user in Firebase using UserService.createUser
-        CompletableFuture<Boolean> createFuture = userService.createUser(user);
+        createUserOrFail(user);
 
-        // Wait for the creation result with a timeout of 20 seconds
-        Boolean created = createFuture.get(20, TimeUnit.SECONDS);
+        Integer before = waterService
+                .getGoalMl(username)
+                .get(20, TimeUnit.SECONDS);
 
-        // Assert that the user was created successfully
-        assertTrue(created);
-
-        // Add the created username to the internal cleanup list
-        createdUsernames.add(username);
-
-        // Call getGoalMl before any explicit update to read the default goal
-        CompletableFuture<Integer> beforeFuture = waterService.getGoalMl(username);
-
-        // Wait for the goal result with a timeout of 20 seconds
-        Integer before = beforeFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that the default goal value is 3000 for a new user
         assertEquals(3000, before.intValue());
 
-        // Try to update the goal with a value below the allowed range
-        CompletableFuture<Boolean> lowFuture = waterService.updateGoalMl(username, 100);
+        Boolean low = waterService
+                .updateGoalMl(username, 100)
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the low update result with a timeout of 20 seconds
-        Boolean low = lowFuture.get(20, TimeUnit.SECONDS);
+        Boolean high = waterService
+                .updateGoalMl(username, 20000)
+                .get(20, TimeUnit.SECONDS);
 
-        // Try to update the goal with a value above the allowed range
-        CompletableFuture<Boolean> highFuture = waterService.updateGoalMl(username, 20000);
-
-        // Wait for the high update result with a timeout of 20 seconds
-        Boolean high = highFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that both out-of-range updates were rejected
         assertFalse(low);
         assertFalse(high);
 
-        // Call getGoalMl again after the invalid updates
-        CompletableFuture<Integer> afterFuture = waterService.getGoalMl(username);
+        Integer after = waterService
+                .getGoalMl(username)
+                .get(20, TimeUnit.SECONDS);
 
-        // Wait for the goal result with a timeout of 20 seconds
-        Integer after = afterFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that the goal value did not change after invalid updates
         assertEquals(before.intValue(), after.intValue());
-
-        // Clean up: delete the temporary test user from Firebase
-        CompletableFuture<Boolean> deleteFuture = userService.deleteUser(username);
-
-        // Wait for the delete result with a timeout of 20 seconds
-        Boolean deleted = deleteFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that the delete operation succeeded
-        assertTrue(deleted);
     }
 
-    // Test that patchUser can update goalMl and that getGoalMl reflects this change
-    @Test
-    void patchUser_canUpdateGoalMlField_and_getGoalMlSeesChange() throws Exception {
-        // Create a Map to hold partial updates for the user
-        Map<String, Object> updates = new HashMap<>();
-        // Put a new goalMl value into the updates map
-        updates.put("goalMl", 4500);
+    // ---------------------------------------------------------------------
+    // CALORIES MODULE TESTS
+    // ---------------------------------------------------------------------
 
-        // Call patchUser with the partial updates for the main test user
-        CompletableFuture<User> patchFuture =
-                userService.patchUser(TEST_USERNAME_1, updates);
-        // Wait for the updated User object with a timeout of 20 seconds
-        User updatedUser = patchFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the returned User object is not null
-        assertNotNull(updatedUser);
-
-        // Call getGoalMl to verify that goalMl was really updated in Firebase
-        CompletableFuture<Integer> goalFuture =
-                waterService.getGoalMl(TEST_USERNAME_1);
-        // Wait for the goal result with a timeout of 20 seconds
-        Integer goalValue = goalFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the returned goal is not null
-        assertNotNull(goalValue);
-        // Assert that the returned goal equals the value we patched
-        assertEquals(4500, goalValue.intValue());
-    }
-
-    // --------------------------- CALORIES MODULE TESTS ---------------------------
-
-    // Test that updateCalories sets the field and getCalories reads the same value
+    // ---------------------------------------------------------------------
+    // Verifies that updateCalories stores today's value and getCalories
+    // returns the same value.
+    // ---------------------------------------------------------------------
     @Test
     void updateCalories_setsValue_and_getCaloriesReadsIt() throws Exception {
-        // Choose a valid calories value (between 0 and 20000 according to validation)
+
         int newCalories = 1234;
 
-        // Call updateCalories for the main test user
-        CompletableFuture<Boolean> updateFuture =
-                userHealthService.updateCalories(TEST_USERNAME_1, newCalories);
-        // Wait for the update result with a timeout of 20 seconds
-        Boolean updated = updateFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the update operation succeeded
+        Boolean updated = userHealthService
+                .updateCalories(TEST_USERNAME_1, newCalories)
+                .get(20, TimeUnit.SECONDS);
+
         assertTrue(updated);
 
-        // Call getCalories to read the calories value for the same user
-        CompletableFuture<Integer> getFuture =
-                userHealthService.getCalories(TEST_USERNAME_1);
-        // Wait for the calories result with a timeout of 20 seconds
-        Integer calories = getFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the returned calories value is not null
+        Integer calories = userHealthService
+                .getCalories(TEST_USERNAME_1)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(calories);
-        // Assert that the returned calories value matches what we set
         assertEquals(newCalories, calories.intValue());
     }
 
-    // Test that getCalories returns 0 for a user with no calories set yet (second test user)
+    // ---------------------------------------------------------------------
+    // Verifies that a fresh user has zero calories for today.
+    // ---------------------------------------------------------------------
     @Test
     void getCalories_forNewUser_returnsZero() throws Exception {
-        // Call getCalories for the second test user
-        CompletableFuture<Integer> getFuture =
-                userHealthService.getCalories(TEST_USERNAME_2);
-        // Wait for the calories result with a timeout of 20 seconds
-        Integer calories = getFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the returned calories value is not null
+
+        Integer calories = userHealthService
+                .getCalories(TEST_USERNAME_2)
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(calories);
-        // Assert that for a new user, calories default is 0
         assertEquals(0, calories.intValue());
     }
 
-    // Test that getCalories returns 0 when the user does not exist in Firebase
+    // ---------------------------------------------------------------------
+    // Verifies that getCalories returns zero for a missing user.
+    // ---------------------------------------------------------------------
     @Test
     void getCalories_userNotFound_returnsZero() throws Exception {
-        // Build a username that should not exist in Firebase
-        String missingUsername = "noSuchUser_" + System.currentTimeMillis();
 
-        // Call getCalories for this non-existing username
-        CompletableFuture<Integer> future =
-                userHealthService.getCalories(missingUsername);
-        // Wait for the calories result with a timeout of 20 seconds
-        Integer cals = future.get(20, TimeUnit.SECONDS);
-        // Assert that the returned calories value is exactly 0
-        assertEquals(0, cals.intValue());
+        String missingUsername =
+                "noSuchUser_" + System.currentTimeMillis();
+
+        Integer calories = userHealthService
+                .getCalories(missingUsername)
+                .get(20, TimeUnit.SECONDS);
+
+        assertEquals(0, calories.intValue());
     }
 
-
-    // Test that updateCalories accepts valid values, rejects invalid ones,
-    // and keeps the last valid value.
+    // ---------------------------------------------------------------------
+    // Verifies valid and invalid calorie updates.
+    //
+    // Invalid values must not overwrite the last valid value.
+    // ---------------------------------------------------------------------
     @Test
-    void updateCalories_validAndInvalidValues_behaveAsExpected() throws Exception {
-        // Build a unique username for this test run
-        String username = "calDeep_" + System.currentTimeMillis();
-        // Create a new User instance for this test
+    void updateCalories_validAndInvalidValues_behaveAsExpected()
+            throws Exception {
+
+        String username =
+                "calDeep_" + System.currentTimeMillis();
+
         User user = new User();
-        // Set username for the test user
         user.setUserName(username);
-        // Encode the password with BCrypt before storing the user directly
-        // through UserService.createUser().
-        user.setPassword(passwordEncoder.encode("p"));
+        user.setPassword("p");
 
-        // Create the user in Firebase
-        CompletableFuture<Boolean> createFuture = userService.createUser(user);
-        // Wait for the creation result with a timeout of 20 seconds
-        Boolean created = createFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the user was created successfully
-        assertTrue(created);
+        createUserOrFail(user);
 
-        // Add the created username to the internal cleanup list
-        createdUsernames.add(username);
+        Integer initial = userHealthService
+                .getCalories(username)
+                .get(20, TimeUnit.SECONDS);
 
-        // Read the initial calories value for this user
-        CompletableFuture<Integer> initialFuture = userHealthService.getCalories(username);
-        // Wait for the calories result with a timeout of 20 seconds
-        Integer initial = initialFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the initial calories value is 0
         assertEquals(0, initial.intValue());
 
-        // ---- Valid update ----
+        Boolean validUpdated = userHealthService
+                .updateCalories(username, 1200)
+                .get(20, TimeUnit.SECONDS);
 
-        // Call updateCalories with a valid value inside the allowed range
-        CompletableFuture<Boolean> validUpdateFuture =
-                userHealthService.updateCalories(username, 1200);
-
-        // Wait for the update result with a timeout of 20 seconds
-        Boolean validUpdated = validUpdateFuture.get(20, TimeUnit.SECONDS);
-
-        // Assert that the update operation succeeded
         assertTrue(validUpdated);
 
-        // Read calories after the valid update
-        CompletableFuture<Integer> afterValidFuture = userHealthService.getCalories(username);
-        // Wait for the calories result with a timeout of 20 seconds
-        Integer afterValid = afterValidFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the calories value was updated correctly to 1200
+        Integer afterValid = userHealthService
+                .getCalories(username)
+                .get(20, TimeUnit.SECONDS);
+
         assertEquals(1200, afterValid.intValue());
 
-        // ---- Invalid updates ----
+        Boolean invalidLow = userHealthService
+                .updateCalories(username, -5)
+                .get(20, TimeUnit.SECONDS);
 
-        // Try to update calories with a negative value
-        CompletableFuture<Boolean> invalidLowFuture =
-                userHealthService.updateCalories(username, -5);
-        // Wait for the invalid low update result
-        Boolean invalidLow = invalidLowFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the negative value was rejected
+        Boolean invalidHigh = userHealthService
+                .updateCalories(username, 50000)
+                .get(20, TimeUnit.SECONDS);
+
         assertFalse(invalidLow);
-
-        // Try to update calories with a value above the allowed maximum
-        CompletableFuture<Boolean> invalidHighFuture =
-                userHealthService.updateCalories(username, 50000);
-        // Wait for the invalid high update result
-        Boolean invalidHigh = invalidHighFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the excessive value was rejected
         assertFalse(invalidHigh);
 
-        // Read calories again after both invalid updates
-        CompletableFuture<Integer> afterInvalidFuture =
-                userHealthService.getCalories(username);
-        // Wait for the calories result with a timeout of 20 seconds
-        Integer afterInvalid = afterInvalidFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the last valid value remained unchanged
-        assertEquals(1200, afterInvalid.intValue());
+        Integer afterInvalid = userHealthService
+                .getCalories(username)
+                .get(20, TimeUnit.SECONDS);
 
-        // Clean up: delete the temporary test user
-        CompletableFuture<Boolean> deleteFuture = userService.deleteUser(username);
-        // Wait for the delete result with a timeout of 20 seconds
-        Boolean deleted = deleteFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the delete operation succeeded
-        assertTrue(deleted);
+        assertEquals(1200, afterInvalid.intValue());
     }
 
-    // --------------------------- BMI DISTRIBUTION BASIC TEST ---------------------------
+    // ---------------------------------------------------------------------
+    // BMI DISTRIBUTION TEST
+    // ---------------------------------------------------------------------
 
-    // Deep test: BMI distribution should correctly count 4 new users, one in each category
+    // ---------------------------------------------------------------------
+    // Verifies that the global BMI distribution correctly counts one new
+    // user in each BMI category.
+    // ---------------------------------------------------------------------
     @Test
-    void getBmiDistribution_countsEachBmiCategoryForNewUsers() throws Exception {
-        // Call getBmiDistribution once to capture the initial state before adding test users
-        CompletableFuture<Map<String, Integer>> beforeFuture = statisticsService.getBmiDistribution();
-        // Wait for the "before" distribution map with a timeout of 20 seconds
-        Map<String, Integer> before = beforeFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the "before" map is not null
+    void getBmiDistribution_countsEachBmiCategoryForNewUsers()
+            throws Exception {
+
+        Map<String, Integer> before = statisticsService
+                .getBmiDistribution()
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(before);
 
-        // Read the initial count for the "Underweight" category
         var underBefore = before.getOrDefault("Underweight", 0);
-        // Read the initial count for the "Normal" category
         var normalBefore = before.getOrDefault("Normal", 0);
-        // Read the initial count for the "Overweight" category
         var overBefore = before.getOrDefault("Overweight", 0);
-        // Read the initial count for the "Obese" category
         var obeseBefore = before.getOrDefault("Obese", 0);
 
-        // Build a common prefix for temporary BMI test users using the current timestamp
-        var prefix = "bmiTestUser_" + System.currentTimeMillis();
-        // Create an array of usernames for the four BMI test users
-        var bmiUsers = new String[]{
+        String prefix =
+                "bmiTestUser_" + System.currentTimeMillis();
+
+        String[] bmiUsers = new String[]{
                 prefix + "_u",
                 prefix + "_n",
                 prefix + "_o",
                 prefix + "_ob"
         };
 
-        // Create an array of BMI values matching the categories in the same order
         double[] bmiValues = new double[]{
                 17.0,
                 22.0,
@@ -909,69 +979,404 @@ public class CapstoneServicesIntegrationTest {
                 32.0
         };
 
-        // Loop through all BMI test users
-        for (var i = 0; i < bmiUsers.length; i++) {
-            // Create a new User instance for the current BMI test user
-            var user = new User();
-            // Set the username for this test user
+        for (int i = 0; i < bmiUsers.length; i++) {
+
+            User user = new User();
             user.setUserName(bmiUsers[i]);
-            // Encode the password with BCrypt before storing the user directly through UserService.createUser()
-            user.setPassword(passwordEncoder.encode("bmiPass"));
+            user.setPassword("bmiPass");
 
-            // Create the user in Firebase using UserService.createUser
-            CompletableFuture<Boolean> createFuture = userService.createUser(user);
-            // Wait for the creation result with a timeout of 20 seconds
-            Boolean created = createFuture.get(20, TimeUnit.SECONDS);
-            // Assert that the user was created successfully
-            assertTrue(created);
+            createUserOrFail(user);
 
-            // Add the created username to the internal cleanup list
-            createdUsernames.add(bmiUsers[i]);
+            Boolean bmiUpdated = userHealthService
+                    .updateBmi(
+                            bmiUsers[i],
+                            bmiValues[i]
+                    )
+                    .get(20, TimeUnit.SECONDS);
 
-            // Update the BMI value for this user according to the array
-            CompletableFuture<Boolean> bmiFuture = userHealthService.updateBmi(bmiUsers[i], bmiValues[i]);
-            // Wait for the BMI update result with a timeout of 20 seconds
-            Boolean bmiUpdated = bmiFuture.get(20, TimeUnit.SECONDS);
-            // Assert that the BMI update operation succeeded
             assertTrue(bmiUpdated);
         }
 
-        // Call getBmiDistribution again after adding the four new test users
-        CompletableFuture<Map<String, Integer>> afterFuture = statisticsService.getBmiDistribution();
-        // Wait for the "after" distribution map with a timeout of 20 seconds
-        Map<String, Integer> after = afterFuture.get(20, TimeUnit.SECONDS);
-        // Assert that the "after" map is not null
+        Map<String, Integer> after = statisticsService
+                .getBmiDistribution()
+                .get(20, TimeUnit.SECONDS);
+
         assertNotNull(after);
 
-        // Read the updated count for the "Underweight" category
         var underAfter = after.getOrDefault("Underweight", 0);
-        // Read the updated count for the "Normal" category
         var normalAfter = after.getOrDefault("Normal", 0);
-        // Read the updated count for the "Overweight" category
         var overAfter = after.getOrDefault("Overweight", 0);
-        // Read the updated count for the "Obese" category
         var obeseAfter = after.getOrDefault("Obese", 0);
 
-        // Assert that the "Underweight" count increased exactly by 1
         assertEquals(underBefore + 1, underAfter);
-        // Assert that the "Normal" count increased exactly by 1
         assertEquals(normalBefore + 1, normalAfter);
-        // Assert that the "Overweight" count increased exactly by 1
         assertEquals(overBefore + 1, overAfter);
-        // Assert that the "Obese" count increased exactly by 1
         assertEquals(obeseBefore + 1, obeseAfter);
+    }
 
-        // Finally, clean up all four temporary BMI test users from Firebase
-        for (String username : bmiUsers) {
-            // Call deleteUser for the current temporary BMI user
-            CompletableFuture<Boolean> deleteFuture = userService.deleteUser(username);
+    // ---------------------------------------------------------------------
+    // MONGODB TRANSACTION / CONCURRENCY TESTS
+    // ---------------------------------------------------------------------
 
-            // Wait for the deletion result with a timeout of 20 seconds
-            Boolean deleted = deleteFuture.get(20, TimeUnit.SECONDS);
+    // ---------------------------------------------------------------------
+    // Verifies that all user-related write transactions increment the same
+    // transactionVersion field on the user document.
+    //
+    // This confirms that:
+    //
+    // updateWater()
+    // updateCalories()
+    // updateGoalMl()
+    //
+    // all perform a write against the same users document before writing
+    // their related collection data.
+    //
+    // This shared write is what allows MongoDB to detect write conflicts
+    // against deleteByUsername() when operations overlap.
+    // ---------------------------------------------------------------------
+    @Test
+    void userRelatedWriteTransactions_incrementTransactionVersion()
+            throws Exception {
 
-            // Assert that the delete operation finished successfully
-            assertTrue(deleted);
+        String username =
+                "transactionVersion_" + System.currentTimeMillis();
+
+        User user = new User();
+        user.setUserName(username);
+        user.setPassword("transactionPass");
+
+        createUserOrFail(user);
+
+        long initialVersion = getTransactionVersion(username);
+
+        assertTrue(initialVersion >= 0);
+
+        assertTrue(
+                waterService
+                        .updateWater(username, 250)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        long afterWater = getTransactionVersion(username);
+
+        assertEquals(initialVersion + 1, afterWater);
+
+        assertTrue(
+                userHealthService
+                        .updateCalories(username, 1800)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        long afterCalories = getTransactionVersion(username);
+
+        assertEquals(afterWater + 1, afterCalories);
+
+        assertTrue(
+                waterService
+                        .updateGoalMl(username, 3000)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        long afterGoal = getTransactionVersion(username);
+
+        assertEquals(afterCalories + 1, afterGoal);
+    }
+
+    // ---------------------------------------------------------------------
+    // Verifies the delete transaction across all related MongoDB collections.
+    //
+    // Before deletion, the test creates:
+    // - one user
+    // - one water record
+    // - one calories record
+    // - one goal record
+    //
+    // deleteUser() must remove everything as one logical operation.
+    // ---------------------------------------------------------------------
+    @Test
+    void deleteUser_removesRelatedMongoDocuments() throws Exception {
+
+        String username =
+                "deleteTransaction_" + System.currentTimeMillis();
+
+        User user = new User();
+        user.setUserName(username);
+        user.setPassword("deletePass");
+
+        createUserOrFail(user);
+
+        ObjectId userId = getUserIdFromMongo(username);
+
+        assertNotNull(userId);
+
+        assertTrue(
+                waterService
+                        .updateWater(username, 500)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        assertTrue(
+                userHealthService
+                        .updateCalories(username, 2200)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        assertTrue(
+                waterService
+                        .updateGoalMl(username, 3300)
+                        .get(20, TimeUnit.SECONDS)
+        );
+
+        assertTrue(
+                waterRecordsCollection().countDocuments(
+                        eq("userId", userId)
+                ) > 0
+        );
+
+        assertTrue(
+                caloriesCollection().countDocuments(
+                        eq("userId", userId)
+                ) > 0
+        );
+
+        assertTrue(
+                goalsCollection().countDocuments(
+                        eq("userId", userId)
+                ) > 0
+        );
+
+        Boolean deleted = userService
+                .deleteUser(username)
+                .get(20, TimeUnit.SECONDS);
+
+        assertTrue(deleted);
+
+        assertNull(
+                usersCollection().find(
+                        eq("_id", userId)
+                ).first()
+        );
+
+        assertEquals(
+                0,
+                waterRecordsCollection().countDocuments(
+                        eq("userId", userId)
+                )
+        );
+
+        assertEquals(
+                0,
+                caloriesCollection().countDocuments(
+                        eq("userId", userId)
+                )
+        );
+
+        assertEquals(
+                0,
+                goalsCollection().countDocuments(
+                        eq("userId", userId)
+                )
+        );
+    }
+
+    // ---------------------------------------------------------------------
+    // Verifies concurrency between deleteByUsername() and updateWater().
+    //
+    // Both operations use a transaction and both write transactionVersion
+    // on the same user document.
+    //
+    // Under real concurrency, MongoDB may allow one transaction to commit
+    // and make the other transaction fail with a transient write conflict.
+    //
+    // This test does NOT require both operations to succeed.
+    //
+    // The important consistency rule is:
+    //
+    // If the user was deleted, there must not be any water record left
+    // referencing the deleted user's ObjectId.
+    //
+    // That is the orphan-document race condition we want to prevent.
+    // ---------------------------------------------------------------------
+    @Test
+    void concurrentDeleteAndWaterUpdate_neverLeaveOrphanWaterRecord()
+            throws Exception {
+
+        String username =
+                "deleteWaterRace_" + System.currentTimeMillis();
+
+        User user = new User();
+        user.setUserName(username);
+        user.setPassword("racePass");
+
+        createUserOrFail(user);
+
+        ObjectId userId = getUserIdFromMongo(username);
+
+        assertNotNull(userId);
+
+        CountDownLatch start = new CountDownLatch(1);
+
+        CompletableFuture<Object> deleteAttempt =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
+
+                        return userService
+                                .deleteUser(username)
+                                .get(20, TimeUnit.SECONDS);
+
+                    } catch (Exception e) {
+                        return e;
+                    }
+                });
+
+        CompletableFuture<Object> waterAttempt =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
+
+                        return waterService
+                                .updateWater(username, 650)
+                                .get(20, TimeUnit.SECONDS);
+
+                    } catch (Exception e) {
+                        return e;
+                    }
+                });
+
+        start.countDown();
+
+        deleteAttempt.get(20, TimeUnit.SECONDS);
+        waterAttempt.get(20, TimeUnit.SECONDS);
+
+        Document userDocument = usersCollection().find(
+                eq("_id", userId)
+        ).first();
+
+        long waterCount = waterRecordsCollection().countDocuments(
+                eq("userId", userId)
+        );
+
+        // If delete won and the user no longer exists, the transaction
+        // protection must ensure that no orphan water record remains.
+        if (userDocument == null) {
+            assertEquals(0, waterCount);
+        }
+
+        // If the write transaction won and delete failed because of a
+        // transaction conflict, the user may still exist. That state is
+        // consistent because the related water document still references
+        // a valid user.
+        else {
+            assertEquals(username, userDocument.getString("username"));
         }
     }
 
+    // ---------------------------------------------------------------------
+    // Verifies concurrency between deleteByUsername() and the two daily
+    // history write operations:
+    //
+    // - updateCalories()
+    // - updateGoalMl()
+    //
+    // The test starts all operations together.
+    //
+    // Some transactions may fail because MongoDB detects a write conflict.
+    // That is acceptable.
+    //
+    // The required invariant is:
+    //
+    // When the user document is gone, no calories or goal document may
+    // remain with that deleted userId.
+    // ---------------------------------------------------------------------
+    @Test
+    void concurrentDeleteCaloriesAndGoalUpdates_neverLeaveOrphanDocuments()
+            throws Exception {
+
+        String username =
+                "deleteHealthRace_" + System.currentTimeMillis();
+
+        User user = new User();
+        user.setUserName(username);
+        user.setPassword("racePass");
+
+        createUserOrFail(user);
+
+        ObjectId userId = getUserIdFromMongo(username);
+
+        assertNotNull(userId);
+
+        CountDownLatch start = new CountDownLatch(1);
+
+        CompletableFuture<Object> deleteAttempt =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
+
+                        return userService
+                                .deleteUser(username)
+                                .get(20, TimeUnit.SECONDS);
+
+                    } catch (Exception e) {
+                        return e;
+                    }
+                });
+
+        CompletableFuture<Object> caloriesAttempt =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
+
+                        return userHealthService
+                                .updateCalories(username, 2100)
+                                .get(20, TimeUnit.SECONDS);
+
+                    } catch (Exception e) {
+                        return e;
+                    }
+                });
+
+        CompletableFuture<Object> goalAttempt =
+                CompletableFuture.supplyAsync(() -> {
+                    try {
+                        start.await();
+
+                        return waterService
+                                .updateGoalMl(username, 3400)
+                                .get(20, TimeUnit.SECONDS);
+
+                    } catch (Exception e) {
+                        return e;
+                    }
+                });
+
+        start.countDown();
+
+        deleteAttempt.get(20, TimeUnit.SECONDS);
+        caloriesAttempt.get(20, TimeUnit.SECONDS);
+        goalAttempt.get(20, TimeUnit.SECONDS);
+
+        Document userDocument = usersCollection().find(
+                eq("_id", userId)
+        ).first();
+
+        long caloriesCount = caloriesCollection().countDocuments(
+                eq("userId", userId)
+        );
+
+        long goalsCount = goalsCollection().countDocuments(
+                eq("userId", userId)
+        );
+
+        // A deleted user must never have related orphan documents.
+        if (userDocument == null) {
+            assertEquals(0, caloriesCount);
+            assertEquals(0, goalsCount);
+        }
+
+        // If delete lost the transaction conflict, the user is still valid.
+        else {
+            assertEquals(username, userDocument.getString("username"));
+        }
+    }
 }
