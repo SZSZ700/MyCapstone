@@ -4,6 +4,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.UpdateOptions;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -162,34 +163,37 @@ public class MongoUserRepository implements UserRepository {
     //
     // All delete operations must succeed together.
     //
-    // If any operation fails, or if the user document was not deleted,
-    // the entire transaction is aborted.
+    // withTransaction() manages:
+    // - starting the transaction
+    // - committing the transaction
+    // - aborting the transaction when an exception occurs
+    // - retrying eligible transient transaction errors
     //
     // Mongo raw:
     //
-    // session.startTransaction()
+    // session.withTransaction(() -> {
     //
-    // db.users.findOne({
-    //     username: username
+    //     db.users.findOneAndUpdate(
+    //         { username: username },
+    //         { $inc: { transactionVersion: 1 } }
+    //     )
+    //
+    //     db.calories.deleteMany({
+    //         userId: userId
+    //     })
+    //
+    //     db.goals.deleteMany({
+    //         userId: userId
+    //     })
+    //
+    //     db.water_records.deleteMany({
+    //         userId: userId
+    //     })
+    //
+    //     db.users.deleteOne({
+    //         _id: userId
+    //     })
     // })
-    //
-    // db.calories.deleteMany({
-    //     userId: userId
-    // })
-    //
-    // db.goals.deleteMany({
-    //     userId: userId
-    // })
-    //
-    // db.water_records.deleteMany({
-    //     userId: userId
-    // })
-    //
-    // db.users.deleteOne({
-    //     _id: userId
-    // })
-    //
-    // session.commitTransaction()
     //
     // Returns true when the user and all related data were deleted.
     // Returns false when no matching user exists.
@@ -198,70 +202,42 @@ public class MongoUserRepository implements UserRepository {
     public CompletableFuture<Boolean> deleteByUsername(String username) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
-
             // Open a MongoDB client session.
-            // The session is automatically closed when this block finishes.
             try (ClientSession session = mongoClient.startSession()) {
-                // Start a new MongoDB transaction.
-                session.startTransaction();
-
-                try {
-                    // Find the user's ObjectId inside the current transaction.
+                // Execute the complete delete operation inside one transaction.
+                return session.withTransaction(() -> {
+                    // Find and lock the user document by incrementing
+                    // transactionVersion inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
 
                     // The user does not exist.
-                    // Abort the transaction because there is nothing to delete.
                     if (userId == null) {
-                        session.abortTransaction();
                         return false;
                     }
 
-                    // Delete all calorie history belonging to the user
-                    // inside the current transaction.
-                    calories.deleteMany(
-                            session,
-                            eq("userId", userId)
-                    );
+                    // Delete all calorie records belonging to the user.
+                    calories.deleteMany(session, eq("userId", userId));
 
-                    // Delete all goal history belonging to the user
-                    // inside the current transaction.
-                    goals.deleteMany(
-                            session,
-                            eq("userId", userId)
-                    );
+                    // Delete all goal records belonging to the user.
+                    goals.deleteMany(session, eq("userId", userId));
 
-                    // Delete all water records belonging to the user
-                    // inside the current transaction.
-                    waterRecords.deleteMany(
-                            session,
-                            eq("userId", userId)
-                    );
+                    // Delete all water records belonging to the user.
+                    waterRecords.deleteMany(session, eq("userId", userId));
 
                     // Delete the user document itself.
-                    var result = users.deleteOne(
-                            session,
-                            eq("_id", userId)
-                    );
+                    var result = users.deleteOne(session, eq("_id", userId));
 
                     // If the user document was not deleted,
-                    // roll back all related delete operations as well.
+                    // abort the transaction so previous deletions are rolled back.
                     if (result.getDeletedCount() == 0) {
                         session.abortTransaction();
                         return false;
                     }
 
-                    // Every delete operation succeeded.
-                    // Commit the transaction and make all deletions permanent.
-                    session.commitTransaction();
+                    // Returning true allows withTransaction()
+                    // to commit the complete transaction.
                     return true;
-                } catch (Exception e) {
-                    // A MongoDB operation failed.
-                    // Roll back every operation executed in this transaction.
-                    session.abortTransaction();
-                    // Re-throw the exception so the CompletableFuture
-                    // completes exceptionally.
-                    throw e;
-                }
+                });
             }
         });
     }
@@ -616,49 +592,43 @@ public class MongoUserRepository implements UserRepository {
     // Updates today's calories value using a MongoDB transaction.
     //
     // The transaction contains:
-    // 1. Find the user.
-    // 2. Check whether today's calories document already exists.
-    // 3. Insert a new document or update the existing one.
-    // 4. Commit all operations together.
     //
-    // If any MongoDB operation fails, the transaction is aborted.
+    // 1. Find and lock the user.
+    // 2. Update today's calories document.
+    // 3. Insert today's document automatically when it does not exist.
+    //
+    // upsert(true) means:
+    //
+    // - If today's document exists -> update it.
+    // - If today's document does not exist -> insert it.
+    //
+    // withTransaction() manages transaction start, commit, abort
+    // and eligible transient transaction retries.
     //
     // Mongo raw:
     //
-    // session.startTransaction()
+    // session.withTransaction(() -> {
     //
-    // db.users.findOne({
-    //     username: username
-    // })
+    //     db.users.findOneAndUpdate(
+    //         { username: username },
+    //         { $inc: { transactionVersion: 1 } }
+    //     )
     //
-    // db.calories.findOne({
-    //     userId: userId,
-    //     recordDate: today
-    // })
-    //
-    // If today's document exists:
-    //
-    // db.calories.updateOne(
-    //     {
-    //         userId: userId,
-    //         recordDate: today
-    //     },
-    //     {
-    //         $set: {
-    //             calories: caloriesValue
+    //     db.calories.updateOne(
+    //         {
+    //             userId: userId,
+    //             recordDate: today
+    //         },
+    //         {
+    //             $set: {
+    //                 calories: caloriesValue
+    //             }
+    //         },
+    //         {
+    //             upsert: true
     //         }
-    //     }
-    // )
-    //
-    // If today's document does not exist:
-    //
-    // db.calories.insertOne({
-    //     userId: userId,
-    //     calories: caloriesValue,
-    //     recordDate: today
+    //     )
     // })
-    //
-    // session.commitTransaction()
     //
     // Returns false for invalid values or missing users.
     // ---------------------------------------------------------------------
@@ -666,80 +636,35 @@ public class MongoUserRepository implements UserRepository {
     public CompletableFuture<Boolean> updateCalories(String username, int caloriesValue) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
-
             // Preserve the existing calorie validation.
             if (caloriesValue < 0 || caloriesValue > 20000) { return false; }
-
             // Open a MongoDB client session.
-            // The session is automatically closed when the try block finishes.
             try (ClientSession session = mongoClient.startSession()) {
-                // Start a new MongoDB transaction.
-                session.startTransaction();
-                try {
-
-                    // Find the user's ObjectId inside the current transaction.
+                // Execute the complete operation inside one transaction.
+                return session.withTransaction(() -> {
+                    // Find and lock the user inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
-
                     // The user does not exist.
-                    // Abort the transaction because there is nothing to update.
-                    if (userId == null) {
-                        session.abortTransaction();
-                        return false;
-                    }
+                    if (userId == null) { return false; }
 
                     // Build today's yyyy-MM-dd key.
                     var today = LocalDate.now().toString();
 
-                    // Find today's calories document inside the same transaction.
-                    Document existingDocument = calories.find(
-                            session,
+                    // Update today's calories document.
+                    // If it does not exist, MongoDB creates it automatically.
+                    calories.updateOne(session,
                             and(
                                     eq("userId", userId),
                                     eq("recordDate", today)
-                            )
-                    ).first();
+                            ),
+                            set("calories", caloriesValue),
+                            new UpdateOptions().upsert(true)
+                    );
 
-                    // No calories record exists for today.
-                    if (existingDocument == null) {
-
-                        // Insert today's calories document inside the transaction.
-                        calories.insertOne(
-                                session,
-                                new Document("userId", userId)
-                                        .append("calories", caloriesValue)
-                                        .append("recordDate", today)
-                        );
-
-                    } else {
-
-                        // Today's calories document already exists.
-                        // Update only the calories field inside the transaction.
-                        calories.updateOne(
-                                session,
-                                and(
-                                        eq("userId", userId),
-                                        eq("recordDate", today)
-                                ),
-                                set("calories", caloriesValue)
-                        );
-                    }
-
-                    // All operations succeeded.
-                    // Commit the transaction and make the changes permanent.
-                    session.commitTransaction();
-
+                    // Returning true allows withTransaction()
+                    // to commit the transaction.
                     return true;
-
-                } catch (Exception e) {
-
-                    // A MongoDB operation failed.
-                    // Roll back every operation executed in this transaction.
-                    session.abortTransaction();
-
-                    // Re-throw the exception so the CompletableFuture
-                    // completes exceptionally.
-                    throw e;
-                }
+                });
             }
         });
     }

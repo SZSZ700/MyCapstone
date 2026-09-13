@@ -3,6 +3,7 @@ import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.UpdateOptions;
 import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.example.CapstoneProject.repository.WaterRepository;
@@ -83,17 +84,33 @@ public class MongoWaterRepository implements WaterRepository {
     }
 
     // ---------------------------------------------------------------------
-    // Adds one water drink for the user.
+    // Adds one water drink for the user using a MongoDB transaction.
+    //
+    // Every drink becomes a separate document.
+    //
+    // The transaction contains:
+    //
+    // 1. Find and lock the user.
+    // 2. Insert one new water record.
+    //
+    // withTransaction() manages transaction start, commit, abort
+    // and eligible transient transaction retries.
     //
     // Mongo raw:
     //
-    // db.water_records.insertOne({
-    //     userId: userId,
-    //     amountMl: waterAmount,
-    //     recordedAt: new Date()
-    // })
+    // session.withTransaction(() -> {
     //
-    // Every drink becomes a separate document.
+    //     db.users.findOneAndUpdate(
+    //         { username: username },
+    //         { $inc: { transactionVersion: 1 } }
+    //     )
+    //
+    //     db.water_records.insertOne({
+    //         userId: userId,
+    //         amountMl: waterAmount,
+    //         recordedAt: new Date()
+    //     })
+    // })
     //
     // Returns false when:
     // - waterAmount <= 0
@@ -108,35 +125,24 @@ public class MongoWaterRepository implements WaterRepository {
 
             // Open a MongoDB client session.
             try (ClientSession session = mongoClient.startSession()) {
-                // Start a new MongoDB transaction.
-                session.startTransaction();
-                try {
-
-                    // Resolve the username inside the current transaction.
+                // Execute the complete operation inside one transaction.
+                return session.withTransaction(() -> {
+                    // Find and lock the user inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
-
                     // The user does not exist.
-                    if (userId == null) {
-                        session.abortTransaction();
-                        return false;
-                    }
+                    if (userId == null) { return false; }
 
-                    // Insert one water record inside the same transaction.
-                    waterRecords.insertOne(
-                            session,
+                    // Insert one new water record inside the transaction.
+                    waterRecords.insertOne(session,
                             new Document("userId", userId)
                                     .append("amountMl", waterAmount)
                                     .append("recordedAt", new Date())
                     );
 
-                    // Make the inserted water record permanent.
-                    session.commitTransaction();
+                    // Returning true allows withTransaction()
+                    // to commit the transaction.
                     return true;
-                } catch (Exception e) {
-                    // Roll back the transaction if any MongoDB operation fails.
-                    session.abortTransaction();
-                    throw e;
-                }
+                });
             }
         });
     }
@@ -505,51 +511,45 @@ public class MongoWaterRepository implements WaterRepository {
     // Updates today's water goal using a MongoDB transaction.
     //
     // The transaction contains:
-    // 1. Find the user.
-    // 2. Check whether today's goal document already exists.
-    // 3. Insert a new goal or update the existing one.
-    // 4. Commit all operations together.
     //
-    // If any MongoDB operation fails, the transaction is aborted.
+    // 1. Find and lock the user.
+    // 2. Update today's goal document.
+    // 3. Insert today's goal automatically when it does not exist.
+    //
+    // upsert(true) means:
+    //
+    // - If today's goal exists -> update it.
+    // - If today's goal does not exist -> insert it.
+    //
+    // Older goal documents remain stored as history.
+    //
+    // withTransaction() manages transaction start, commit, abort
+    // and eligible transient transaction retries.
     //
     // Mongo raw:
     //
-    // session.startTransaction()
+    // session.withTransaction(() -> {
     //
-    // db.users.findOne({
-    //     username: username
-    // })
+    //     db.users.findOneAndUpdate(
+    //         { username: username },
+    //         { $inc: { transactionVersion: 1 } }
+    //     )
     //
-    // db.goals.findOne({
-    //     userId: userId,
-    //     recordDate: today
-    // })
-    //
-    // If no document exists:
-    //
-    // db.goals.insertOne({
-    //     userId: userId,
-    //     goalMl: goalMl,
-    //     recordDate: today
-    // })
-    //
-    // If a document already exists:
-    //
-    // db.goals.updateOne(
-    //     {
-    //         userId: userId,
-    //         recordDate: today
-    //     },
-    //     {
-    //         $set: {
-    //             goalMl: goalMl
+    //     db.goals.updateOne(
+    //         {
+    //             userId: userId,
+    //             recordDate: today
+    //         },
+    //         {
+    //             $set: {
+    //                 goalMl: goalMl
+    //             }
+    //         },
+    //         {
+    //             upsert: true
     //         }
-    //     }
-    // )
-    //
-    // session.commitTransaction()
-    //
-    // Older goal documents remain stored as history.
+    //     )
+    // })
     //
     // Returns false for invalid values or missing users.
     // ---------------------------------------------------------------------
@@ -557,85 +557,39 @@ public class MongoWaterRepository implements WaterRepository {
     public CompletableFuture<Boolean> updateGoalMl(String username, int goalMl) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
-
-            // Preserve the original goal validation.
+            // Preserve the existing goal validation.
             if (goalMl < 500 || goalMl > 10000) { return false; }
 
             // Open a MongoDB client session.
-            // The session is automatically closed when this block finishes.
             try (ClientSession session = mongoClient.startSession()) {
-
-                // Start a new MongoDB transaction.
-                session.startTransaction();
-
-                try {
-
-                    // Resolve the username into MongoDB's user ObjectId
-                    // inside the current transaction.
+                // Execute the complete operation inside one transaction.
+                return session.withTransaction(() -> {
+                    // Find and lock the user inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
 
                     // The user does not exist.
                     if (userId == null) {
-                        session.abortTransaction();
                         return false;
                     }
 
                     // Build today's yyyy-MM-dd key.
                     String today = LocalDate.now().toString();
 
-                    // Check whether a goal already exists for today
-                    // inside the same transaction.
-                    Document existingGoal = goals.find(
-                            session,
-                            and(
-                                    eq("userId", userId),
+                    // Update today's goal.
+                    // If today's document does not exist,
+                    // MongoDB creates it automatically.
+                    goals.updateOne(session,
+                            and(eq("userId", userId),
                                     eq("recordDate", today)
-                            )
-                    ).first();
+                            ),
+                            set("goalMl", goalMl),
+                            new UpdateOptions().upsert(true)
+                    );
 
-                    if (existingGoal == null) {
-
-                        // No goal exists for today,
-                        // therefore insert a new goal history document
-                        // inside the transaction.
-                        goals.insertOne(
-                                session,
-                                new Document("userId", userId)
-                                        .append("goalMl", goalMl)
-                                        .append("recordDate", today)
-                        );
-
-                    } else {
-
-                        // Today's goal already exists,
-                        // therefore update only the goalMl field
-                        // inside the transaction.
-                        goals.updateOne(
-                                session,
-                                and(
-                                        eq("userId", userId),
-                                        eq("recordDate", today)
-                                ),
-                                set("goalMl", goalMl)
-                        );
-                    }
-
-                    // All operations succeeded.
-                    // Commit the transaction and make the changes permanent.
-                    session.commitTransaction();
-
+                    // Returning true allows withTransaction()
+                    // to commit the transaction.
                     return true;
-
-                } catch (Exception e) {
-
-                    // A MongoDB operation failed.
-                    // Roll back all operations made in this transaction.
-                    session.abortTransaction();
-
-                    // Re-throw the exception so the CompletableFuture
-                    // completes exceptionally.
-                    throw e;
-                }
+                });
             }
         });
     }
