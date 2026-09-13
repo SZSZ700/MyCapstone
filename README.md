@@ -2,11 +2,11 @@
 
 ## 📌 Overview
 
-Hi-Bari is a full-stack health tracking application designed to monitor daily water intake, calculate BMI, manage daily water goals, and store user health data.
+Hi-Bari is a full-stack health tracking application designed to monitor daily water intake, calculate BMI, manage daily water goals, track calories, and store user health data.
 
-The system combines an Android mobile client, a Spring Boot REST API, and Firebase Realtime Database.
+The system combines an Android mobile client, a Spring Boot REST API, and MongoDB.
 
-The backend has been refactored into separated controller, service, repository, configuration, DTO, security, and exception-handling layers so that HTTP handling, business logic, authentication, and Firebase access are no longer mixed together.
+The backend has been refactored into separated controller, service, repository, configuration, DTO, security, and exception-handling layers so that HTTP handling, business logic, authentication, and MongoDB access are not mixed together.
 
 Communication between the Android application and the Spring Boot backend uses HTTPS/TLS.
 
@@ -22,7 +22,7 @@ Click the demo image in the repository to watch a short demonstration of the Hi-
 
 The repository contains two main projects: the Android client and the Spring Boot backend.
 
-The tree below focuses on the source files and configuration that are relevant to the application. Generated build output, IDE metadata, and Gradle caches are intentionally omitted.
+The tree below focuses on the source files and configuration that are relevant to the application. Generated build output, IDE metadata, and Gradle/Maven caches are intentionally omitted.
 
 ```text
 MyPrivatePractice/
@@ -137,11 +137,14 @@ MyPrivatePractice/
         │   ├── java/
         │   │   └── org/example/CapstoneProject/
         │   │       ├── Application.java
-        │   │       ├── config/
-        │   │       │   ├── FirebaseConfiguration.java
+        │   │       │
+        │   │       ├── configuration/
+        │   │       │   ├── MongoConfiguration.java
         │   │       │   └── PasswordConfiguration.java
+        │   │       │
         │   │       ├── EnvConfiguration/
         │   │       │   └── EnvConfig.java
+        │   │       │
         │   │       ├── dto/
         │   │       │   ├── LoginRequest.java
         │   │       │   ├── LoginResponse.java
@@ -152,18 +155,23 @@ MyPrivatePractice/
         │   │       │   ├── GoalResponse.java
         │   │       │   ├── GoalUpdateResponse.java
         │   │       │   └── CaloriesResponse.java
+        │   │       │
         │   │       ├── exception/
         │   │       │   └── GlobalExceptionHandler.java
+        │   │       │
         │   │       ├── model/
         │   │       │   └── User.java
+        │   │       │
         │   │       ├── repository/
         │   │       │   ├── UserRepository.java
         │   │       │   ├── WaterRepository.java
-        │   │       │   └── firebase/
-        │   │       │       ├── FirebaseUserRepository.java
-        │   │       │       └── FirebaseWaterRepository.java
+        │   │       │   └── mongo/
+        │   │       │       ├── MongoUserRepository.java
+        │   │       │       └── MongoWaterRepository.java
+        │   │       │
         │   │       ├── security/
         │   │       │   └── JwtAuthenticationFilter.java
+        │   │       │
         │   │       ├── service/
         │   │       │   ├── AuthenticationService.java
         │   │       │   ├── JwtService.java
@@ -171,6 +179,7 @@ MyPrivatePractice/
         │   │       │   ├── WaterService.java
         │   │       │   ├── UserHealthService.java
         │   │       │   └── StatisticsService.java
+        │   │       │
         │   │       └── web/
         │   │           └── UsersController.java
         │   │
@@ -186,21 +195,21 @@ MyPrivatePractice/
                     └── JwtServiceTest.java
 ```
 
-> `application.properties` and `keystore.p12` are local backend configuration files and are excluded from version control. The keystore contains the server private key.
+> `application.properties`, `.env`, and `keystore.p12` contain local backend configuration and must be handled as local/sensitive configuration where appropriate.
 
-> Generated directories such as `.gradle/`, `.idea/`, `build/`, and other IDE/build artifacts are intentionally not shown in this tree.
+> Generated directories such as `.gradle/`, `.idea/`, `build/`, `target/`, and other IDE/build artifacts are intentionally not shown in this tree.
 
 ---
 
 ## 📱 Hai-Bari Android Application
 
-Contains the Android client, user interface, session handling, water tracking, BMI calculation, charts, daily water goal management, and HTTPS communication with the backend through OkHttp.
+Contains the Android client, user interface, session handling, water tracking, BMI calculation, charts, daily water goal management, calorie-related interaction, and HTTPS communication with the backend through OkHttp.
 
 ---
 
 ## 🌐 Spring Server
 
-Contains the Spring Boot REST API, service layer, repository abstraction, Firebase repository implementations, request/response DTOs, authentication, authorization, validation, centralized exception handling, HTTPS configuration, and transaction-safe database operations.
+Contains the Spring Boot REST API, service layer, repository abstraction, MongoDB repository implementations, request/response DTOs, authentication, authorization, validation, centralized exception handling, HTTPS configuration, MongoDB transactions, upsert operations, and concurrency-safe database operations.
 
 ---
 
@@ -223,9 +232,9 @@ Domain Services
         ↓
 Repository Interfaces
         ↓
-Firebase Repository Implementations
+MongoDB Repository Implementations
         ↓
-Firebase Realtime Database
+MongoDB
 ```
 
 The backend flow is:
@@ -241,12 +250,12 @@ Service
         ↓
 Repository Interface
         ↓
-Firebase Repository Implementation
+MongoDB Repository Implementation
         ↓
-Firebase
+MongoDB
 ```
 
-This separation keeps Firebase-specific code out of the controller and service layers and keeps authentication logic outside the controller methods.
+This separation keeps MongoDB-specific code out of the controller and service layers and keeps authentication logic outside the controller methods.
 
 ---
 
@@ -262,7 +271,7 @@ This separation keeps Firebase-specific code out of the controller and service l
 - Uses Android Network Security Configuration to control certificate trust and cleartext traffic
 - Uses MPAndroidChart for data visualization
 - Sends and receives JSON through the Spring Boot REST API
-- Does not contain Firebase Admin credentials
+- Does not contain MongoDB credentials
 - Does not contain the Spring Boot server private key
 
 Main application areas include:
@@ -274,6 +283,7 @@ Main application areas include:
 - BMI tracking
 - Water history and charts
 - Daily water goal management
+- Calories
 
 ---
 
@@ -294,7 +304,7 @@ Responsibilities:
 - Reads path variables, query parameters, and request bodies
 - Converts service results into HTTP responses
 - Uses request and response DTOs
-- Does not access Firebase directly
+- Does not access MongoDB directly
 
 ---
 
@@ -315,8 +325,10 @@ Responsibilities:
 - Coordinates application operations
 - Contains domain-oriented service logic
 - Handles authentication-related application flow
+- Hashes passwords before persistence
+- Performs PATCH type validation where required
 - Delegates persistence operations to repository interfaces
-- Does not contain Firebase initialization code
+- Does not contain MongoDB-specific database commands
 
 ---
 
@@ -348,25 +360,28 @@ Responsibilities:
 repository/
 ├── UserRepository.java
 ├── WaterRepository.java
-└── firebase/
-    ├── FirebaseUserRepository.java
-    └── FirebaseWaterRepository.java
+└── mongo/
+    ├── MongoUserRepository.java
+    └── MongoWaterRepository.java
 ```
 
 Responsibilities:
 
 - Defines persistence contracts through interfaces
-- Contains Firebase-specific database operations only in Firebase repository implementations
-- Uses asynchronous Firebase callbacks and `CompletableFuture`
-- Handles Firebase reads, writes, queries, updates, and transactions
+- Contains MongoDB-specific operations only in MongoDB repository implementations
+- Uses the synchronous MongoDB Java Driver
+- Wraps blocking database work with `CompletableFuture.supplyAsync(...)`
+- Handles MongoDB reads, writes, filters, updates, deletes, upserts, and transactions
+- Handles transaction-based concurrency protection
+- Converts MongoDB `Document` objects into application models
 
 ---
 
 ### Configuration Layer
 
 ```text
-config/
-├── FirebaseConfiguration.java
+configuration/
+├── MongoConfiguration.java
 └── PasswordConfiguration.java
 
 EnvConfiguration/
@@ -375,12 +390,25 @@ EnvConfiguration/
 
 Responsibilities:
 
-- Initializes Firebase Admin SDK
-- Loads Firebase and JWT-related environment configuration
-- Provides the shared `DatabaseReference` Spring bean
+- Creates the shared `MongoClient` Spring bean
+- Creates the shared `MongoDatabase` Spring bean
 - Provides the BCrypt `PasswordEncoder` bean
+- Loads MongoDB and JWT-related environment configuration
 - Uses constructor-based dependency injection throughout the application
 - Loads the local HTTPS keystore through Spring Boot configuration
+
+MongoDB configuration is loaded from `.env`:
+
+```env
+mongodb.uri=mongodb://localhost:27017/?replicaSet=rs0
+mongodb.database=hibari_db
+```
+
+JWT configuration is also loaded from `.env`:
+
+```env
+JWT_SECRET=<local-secret>
+```
 
 ---
 
@@ -409,7 +437,7 @@ Passwords are not exposed in user-related response DTOs.
 
 ---
 
-## Validation and Exception Handling
+## ✅ Validation and Exception Handling
 
 Request validation uses Jakarta Bean Validation:
 
@@ -437,39 +465,174 @@ Example validation response:
 }
 ```
 
-This keeps validation error handling out of individual controller methods.
+Dynamic PATCH requests are additionally validated before values reach MongoDB.
+
+Supported PATCH field types include:
+
+```text
+password -> String
+fullName -> String
+age      -> Number
+bmi      -> Number
+```
+
+For example, a request such as:
+
+```json
+{
+  "password": 123
+}
+```
+
+is rejected instead of allowing MongoDB to store an invalid BSON type in `passwordHash`.
+
+Manual validation errors are returned as HTTP `400 Bad Request`.
 
 ---
 
-## ☁️ Firebase Realtime Database
+## 🍃 MongoDB Database
 
-Main user data is stored under:
+Hi-Bari uses MongoDB as its persistence database.
+
+The local development database is:
 
 ```text
-Users/
-  userId/
-    userName
-    password
-    fullName
-    age
-    bmi
-    calories
-    goalMl
-    waterLog/
-      yyyy-MM-dd/
-        [total, drink1, drink2, ...]
+hibari_db
 ```
 
-For each daily water list:
+The backend uses the official synchronous MongoDB Java Driver.
 
-- Index `0` → total water consumed that day
-- Index `1..N` → individual drink entries
+The application currently uses four main collections:
 
-The value stored under `password` is a BCrypt hash rather than the user's raw plaintext password.
+```text
+users
+water_records
+calories
+goals
+```
 
-Firebase access is performed by the repository layer instead of directly by controllers or services.
+---
 
-JWT access tokens are not stored in Firebase.
+### `users`
+
+Example document:
+
+```json
+{
+  "_id": "ObjectId(...)",
+  "username": "sharbel",
+  "passwordHash": "$2a$...",
+  "fullName": "Sharbel Zarzour",
+  "age": 25,
+  "bmi": 22.4,
+  "transactionVersion": 0
+}
+```
+
+The `username` is protected by a unique MongoDB index.
+
+The stored password value is a BCrypt hash rather than the user's raw plaintext password.
+
+`transactionVersion` is incremented by transaction-based operations that need to coordinate concurrent writes affecting the same user.
+
+---
+
+### `water_records`
+
+Each drink is stored as a separate document:
+
+```json
+{
+  "_id": "ObjectId(...)",
+  "userId": "ObjectId(...)",
+  "amountMl": 500,
+  "recordedAt": "BSON Date"
+}
+```
+
+Each drink remains independent instead of being appended to a fixed-size array.
+
+This allows the backend to calculate:
+
+- daily totals,
+- daily history,
+- individual drink entries,
+- weekly averages.
+
+---
+
+### `calories`
+
+Daily calories are stored as:
+
+```json
+{
+  "_id": "ObjectId(...)",
+  "userId": "ObjectId(...)",
+  "calories": 2400,
+  "recordDate": "2026-09-13"
+}
+```
+
+One calories document is allowed per user per date.
+
+Today's calories are stored using MongoDB `upsert`.
+
+---
+
+### `goals`
+
+Daily water goals are stored as:
+
+```json
+{
+  "_id": "ObjectId(...)",
+  "userId": "ObjectId(...)",
+  "goalMl": 3000,
+  "recordDate": "2026-09-13"
+}
+```
+
+Older goal documents remain stored as history.
+
+Today's goal is stored using MongoDB `upsert`.
+
+---
+
+## 🔍 MongoDB Indexes
+
+The database uses indexes for uniqueness and query performance.
+
+```javascript
+db.users.createIndex(
+    { username: 1 },
+    { unique: true }
+)
+```
+
+```javascript
+db.water_records.createIndex(
+    { userId: 1, recordedAt: 1 }
+)
+```
+
+```javascript
+db.calories.createIndex(
+    { userId: 1, recordDate: 1 },
+    { unique: true }
+)
+```
+
+```javascript
+db.goals.createIndex(
+    { userId: 1, recordDate: 1 },
+    { unique: true }
+)
+```
+
+The unique username index prevents duplicate users even when concurrent signup requests occur.
+
+The unique calorie and goal indexes guarantee at most one document per user and date.
 
 ---
 
@@ -483,10 +646,12 @@ JWT access tokens are not stored in Firebase.
 6. `UsersController` receives the authorized request.
 7. `WaterService` handles the water-related application flow.
 8. `WaterRepository` defines the required persistence operation.
-9. `FirebaseWaterRepository` performs the Firebase transaction.
-10. Firebase Realtime Database stores the updated water data.
-11. The result travels back through the repository, service, and controller.
-12. The response returns to the Android application through HTTPS.
+9. `MongoWaterRepository` starts a MongoDB transaction.
+10. The user's `transactionVersion` is incremented inside the transaction.
+11. A new document is inserted into `water_records`.
+12. The transaction is committed.
+13. The result travels back through the repository, service, and controller.
+14. The response returns to the Android application through HTTPS.
 
 ```text
 User Action
@@ -507,9 +672,15 @@ WaterService
     ↓
 WaterRepository
     ↓
-FirebaseWaterRepository
+MongoWaterRepository
     ↓
-Firebase Realtime Database
+MongoDB Transaction
+    ↓
+users.transactionVersion increment
+    ↓
+water_records.insertOne(...)
+    ↓
+Transaction Commit
     ↓
 HTTPS Response to Android
 ```
@@ -527,14 +698,14 @@ UserRepository
 WaterRepository
 ```
 
-The current persistence implementation is Firebase:
+The current persistence implementations are MongoDB-based:
 
 ```text
-FirebaseUserRepository
-FirebaseWaterRepository
+MongoUserRepository
+MongoWaterRepository
 ```
 
-This keeps the higher layers independent from Firebase-specific APIs.
+This keeps higher layers independent from MongoDB-specific APIs.
 
 ---
 
@@ -548,37 +719,185 @@ This makes dependencies explicit and avoids direct object creation inside contro
 
 ### 🔹 Asynchronous Backend Operations
 
-Firebase callback-based APIs are wrapped with:
+The project uses the synchronous MongoDB Java Driver.
+
+Blocking repository work is wrapped with:
 
 ```java
-CompletableFuture
+CompletableFuture.supplyAsync(...)
 ```
 
-This allows controller methods to return asynchronous results without blocking on Firebase operations.
+This preserves the application's existing asynchronous service and controller contracts.
 
 ---
 
-### 🔹 Transaction-Based Water Updates
+### 🔹 MongoDB Transactions
 
-Water consumption is updated using Firebase transactions to prevent data loss when multiple updates happen close together.
+Operations that coordinate data across multiple documents or collections use MongoDB transactions.
+
+Transaction-based operations include:
+
+```text
+deleteByUsername()
+updateWater()
+updateCalories()
+updateGoalMl()
+```
+
+The repositories use the user document as a shared concurrency point through:
+
+```text
+transactionVersion
+```
+
+Conceptually:
+
+```text
+Transaction starts
+        ↓
+Find user
+        ↓
+Increment transactionVersion
+        ↓
+Perform related database operation
+        ↓
+Commit
+```
+
+This helps prevent races such as:
+
+```text
+Delete user
+        ↕
+Insert related water/calorie/goal data
+```
+
+---
+
+### 🔹 `withTransaction(...)`
+
+MongoDB's convenient transaction API can be used:
+
+```java
+session.withTransaction(() -> {
+    // transactional MongoDB operations
+    return true;
+});
+```
+
+`withTransaction(...)` manages transaction start, commit, abort behavior, and retry handling for eligible transient transaction errors.
+
+Every MongoDB command that belongs to the transaction receives the same `ClientSession`.
 
 Example:
 
-```text
-Two requests arrive at the same time
-
-Without transaction → one update may overwrite the other ❌
-With transaction    → both updates are stored safely ✅
+```java
+waterRecords.insertOne(
+        session,
+        document
+);
 ```
 
 ---
 
-### 🔹 Dynamic Water Data Structure
+### 🔹 MongoDB Upsert
 
-- Daily water data is stored as a dynamic list
-- There is no fixed number of drink entries
-- The first value stores the daily total
-- Additional values store individual drink amounts
+Calories and daily goals use MongoDB `upsert`.
+
+For calories:
+
+```javascript
+db.calories.updateOne(
+    {
+        userId: userId,
+        recordDate: today
+    },
+    {
+        $set: {
+            calories: caloriesValue
+        }
+    },
+    {
+        upsert: true
+    }
+)
+```
+
+Behavior:
+
+```text
+Today's document exists
+        ↓
+Update it
+
+Today's document does not exist
+        ↓
+Insert it
+```
+
+For goals:
+
+```javascript
+db.goals.updateOne(
+    {
+        userId: userId,
+        recordDate: today
+    },
+    {
+        $set: {
+            goalMl: goalMl
+        }
+    },
+    {
+        upsert: true
+    }
+)
+```
+
+This removes the need for a separate:
+
+```text
+find
+ ↓
+insert or update
+```
+
+sequence.
+
+Water does not use upsert because every drink should remain a separate document.
+
+---
+
+### 🔹 MongoDB Replica Set
+
+MongoDB transactions require a replica set.
+
+The local development environment uses a single-node replica set:
+
+```text
+rs0
+```
+
+MongoDB configuration:
+
+```yaml
+replication:
+  replSetName: rs0
+```
+
+Connection URI:
+
+```text
+mongodb://localhost:27017/?replicaSet=rs0
+```
+
+The local node operates as:
+
+```text
+PRIMARY
+```
+
+This enables MongoDB transaction support while using only one local MongoDB server.
 
 ---
 
@@ -594,7 +913,13 @@ Login verifies credentials using:
 PasswordEncoder.matches(...)
 ```
 
-BCrypt protects stored passwords even if the database contents are exposed.
+MongoDB stores the hash as:
+
+```text
+passwordHash
+```
+
+BCrypt protects stored passwords even if database contents are exposed.
 
 ---
 
@@ -610,7 +935,7 @@ Authorization: Bearer <JWT>
 
 The backend validates the token before protected controller endpoints execute and checks that the token subject matches the username in the requested URL.
 
-The access token is stateless and is not stored in Firebase.
+The access token is stateless and is not stored in MongoDB.
 
 ---
 
@@ -654,7 +979,7 @@ localhost
 
 The Android production/main network configuration blocks cleartext HTTP.
 
-A separate debug network configuration permits HTTP only for local `MockWebServer` instrumented tests.
+A separate debug network configuration permits HTTP only for local MockWebServer instrumented tests.
 
 This keeps the real application connection encrypted while still allowing isolated local HTTP mocks during automated testing.
 
@@ -662,7 +987,7 @@ This keeps the real application connection encrypted while still allowing isolat
 
 ### 🔹 Request and Response DTOs
 
-The backend no longer needs to expose the internal `User` model directly through user-related REST responses.
+The backend does not need to expose the internal `User` model directly through user-related REST responses.
 
 Examples:
 
@@ -684,6 +1009,8 @@ This improves separation between persistence data and the public REST contract.
 ### 🔹 Centralized Validation Errors
 
 Invalid request bodies are handled through a global exception handler instead of repeating validation response logic in every endpoint.
+
+Manual PATCH validation errors are also converted into HTTP `400 Bad Request`.
 
 ---
 
@@ -737,8 +1064,11 @@ Testing technologies include:
 - JUnit 5 / JUnit Jupiter
 - Spring Boot Test
 - TestRestTemplate
-- Firebase integration testing
+- MongoDB integration testing
+- Transaction testing
+- Concurrency testing
 - Asynchronous operation testing
+- JWT unit testing
 
 The backend includes three main test groups:
 
@@ -748,7 +1078,7 @@ UsersControllerIntegrationTest
 JwtServiceTest
 ```
 
-`CapstoneServicesIntegrationTest` verifies the service and repository flow against Firebase.
+`CapstoneServicesIntegrationTest` verifies the service and repository flow against MongoDB.
 
 `UsersControllerIntegrationTest` runs Spring Boot with an embedded server on a random port and performs requests through `TestRestTemplate`.
 
@@ -769,6 +1099,7 @@ Backend tests cover:
 - Service-to-repository integration
 - REST controller endpoints
 - Signup and login behavior
+- Concurrent signup protection
 - BCrypt password storage and matching
 - JWT generation and validation
 - Protected requests with Bearer authentication
@@ -782,7 +1113,11 @@ Backend tests cover:
 - Daily water goals
 - BMI updates and distribution
 - Calories
-- Firebase transactions
+- MongoDB transactions
+- MongoDB upserts
+- Transaction-version changes
+- Cascade deletion
+- Concurrency invariants
 - Asynchronous operations
 - Error handling
 
@@ -792,7 +1127,7 @@ Backend tests cover:
 
 Current security-related design:
 
-- User passwords are hashed with BCrypt before they are stored in Firebase
+- User passwords are hashed with BCrypt before they are stored in MongoDB
 - Login verifies the raw password against the stored BCrypt hash
 - Successful login returns a signed JWT access token
 - JWTs contain the authenticated username as the token subject and have a limited lifetime
@@ -800,19 +1135,20 @@ Current security-related design:
 - `JwtAuthenticationFilter` validates protected requests before they reach `UsersController`
 - Missing, malformed, invalid, or expired tokens are rejected with `401 Unauthorized`
 - A valid token used against another user's protected URL is rejected with `403 Forbidden`
-- The JWT access token is not stored in Firebase
+- The JWT access token is not stored in MongoDB
 - Android-to-backend communication uses HTTPS/TLS
 - Cleartext traffic is disabled for the real backend connection
-- The local Android HTTPS connection trusts only the configured development certificate in addition to system certificates
+- The local Android HTTPS connection trusts the configured development certificate
 - The Spring Boot private key remains inside the local PKCS#12 keystore
 - The server keystore is excluded from version control
-- Firebase Admin SDK is used only by the Spring Boot backend
-- Firebase Admin credentials are not stored in the Android application
+- MongoDB connection values are loaded from `.env`
+- JWT secret values are loaded from `.env`
 - Sensitive local configuration files are excluded from version control
-- Firebase access is centralized in backend repository implementations
-- Request validation rejects missing or invalid required input before business operations run
+- MongoDB access is centralized in backend repository implementations
+- Request validation rejects invalid input before persistence
+- PATCH values are type-checked before reaching MongoDB
 - User response DTOs do not expose passwords
-- User passwords are not included in the `User.toString()` output, reducing accidental backend logging
+- User passwords are not included in the `User.toString()` output
 
 Public endpoints include:
 
@@ -825,12 +1161,11 @@ GET  /api/users/stats/bmiDistribution
 
 User-specific endpoints require a valid JWT.
 
-Sensitive files excluded from the repository include:
+Sensitive files excluded from the repository should include:
 
 ```text
 .env
 application.properties
-Firebase Admin SDK JSON file
 local.properties
 *.jks
 *.keystore
@@ -867,8 +1202,8 @@ does not contain the server private key and may be included in the Android proje
 
 ### Backend
 
-- Java
-- Spring Boot 3
+- Java 23
+- Spring Boot 3.5
 - Spring Web
 - Spring Security Crypto
 - BCrypt
@@ -877,13 +1212,20 @@ does not contain the server private key and may be included in the Android proje
 - REST API
 - HTTPS / TLS
 - PKCS#12
-- Firebase Admin SDK
 - Nimbus JOSE + JWT
 - CompletableFuture
+- MongoDB Java Driver
 
 ### Database
 
-- Firebase Realtime Database
+- MongoDB 8
+- BSON
+- MongoDB Java Driver
+- Compound indexes
+- Unique indexes
+- Transactions
+- Upserts
+- Single-node replica set for local development
 
 ### Security
 
@@ -909,7 +1251,9 @@ does not contain the server private key and may be included in the Android proje
 - JUnit 5 / JUnit Jupiter
 - Spring Boot Test
 - TestRestTemplate
-- Firebase integration testing
+- MongoDB integration testing
+- MongoDB transaction testing
+- Concurrency testing
 - JWT unit testing
 
 ### Development Tools
@@ -919,6 +1263,8 @@ does not contain the server private key and may be included in the Android proje
 - Git
 - GitHub
 - Java Keytool
+- Maven
+- MongoDB Shell (`mongosh`)
 
 ---
 
@@ -957,11 +1303,21 @@ does not contain the server private key and may be included in the Android proje
 - Retrieve BMI-related information
 - Calculate global BMI distribution statistics
 
+BMI categories:
+
+```text
+Underweight: BMI < 18.5
+Normal:      18.5 <= BMI < 25
+Overweight:  25 <= BMI < 30
+Obese:       BMI >= 30
+```
+
 ### 🔥 Calories
 
-- Store calories
+- Store daily calories
 - Retrieve calories
 - Validate allowed calorie updates
+- Update or create today's calorie document using MongoDB upsert
 
 ### 📈 Visualization
 
@@ -1031,7 +1387,7 @@ Open this directory in Android Studio:
 Hai-Bari android application
 ```
 
-Allow Gradle to synchronize, make sure the Spring Boot server is running, select an Android emulator, and run the application.
+Allow Gradle to synchronize, make sure MongoDB and the Spring Boot server are running, select an Android emulator, and run the application.
 
 For the Android emulator, the backend is accessed through:
 
@@ -1054,6 +1410,46 @@ app/src/main/res/xml/network_security_config.xml
 ```
 
 The normal application configuration disables cleartext HTTP traffic.
+
+---
+
+### 🍃 MongoDB
+
+MongoDB must be running before starting the backend.
+
+The local database is:
+
+```text
+hibari_db
+```
+
+The local server uses a single-node replica set:
+
+```text
+rs0
+```
+
+MongoDB configuration:
+
+```yaml
+replication:
+  replSetName: rs0
+```
+
+The replica set should report:
+
+```text
+PRIMARY
+```
+
+The backend uses:
+
+```env
+mongodb.uri=mongodb://localhost:27017/?replicaSet=rs0
+mongodb.database=hibari_db
+```
+
+The replica set is required because the backend uses MongoDB transactions.
 
 ---
 
@@ -1114,7 +1510,7 @@ src/main/resources/keystore.p12
 
 The keystore contains the server private key and is excluded from Git.
 
-Sensitive Firebase, JWT, and HTTPS configuration files are required locally but are not included in the repository.
+Sensitive MongoDB, JWT, and HTTPS configuration values are required locally but are not intended to be committed to the repository.
 
 ---
 
@@ -1146,7 +1542,9 @@ The real backend connection remains HTTPS-only.
 
 The Spring Boot integration tests start the required Spring application context automatically.
 
-The controller integration tests use an embedded web server with a random port, so the server does not need to be started manually before running the tests.
+The controller integration tests use an embedded web server with a random port, so the normal server does not need to be started manually before running them.
+
+MongoDB must be available because the integration tests use the real MongoDB-backed repositories.
 
 Run from IntelliJ IDEA or:
 
@@ -1229,6 +1627,10 @@ Authenticates and authorizes API requests
 HTTPS / TLS
     ↓
 Protects data while it travels across the network
+
+MongoDB Transactions
+    ↓
+Protect multi-document consistency
 ```
 
 Example login flow:
@@ -1259,10 +1661,12 @@ Protected requests send Bearer token over HTTPS
 - Add server-side token revocation / logout support
 - Move Android token storage to a stronger encrypted storage mechanism
 - Remove sensitive request-body and token logging from Android debug interceptors
-- Add dedicated `JwtAuthenticationFilter` tests for missing token, invalid token, and cross-user access
+- Add additional dedicated `JwtAuthenticationFilter` security tests
 - Replace the local self-signed development certificate with a trusted CA-issued certificate when deploying the backend publicly
 - Move production HTTPS certificate/private-key management outside the application package
 - Use environment-based HTTPS keystore credentials for deployment
+- Add production MongoDB authentication and authorization
+- Move production MongoDB deployment away from the local single-node development replica set
 - More detailed health statistics
 - Smart hydration suggestions
 - Improved UI and UX
@@ -1292,25 +1696,37 @@ This project was developed as a final capstone project in Software Engineering s
 - Full-stack architecture
 - Android mobile client
 - Spring Boot REST API
+- MongoDB database
 - Layered backend architecture
 - Controller / Service / Repository separation
 - Repository abstraction
-- Dedicated Firebase repository implementations
+- Dedicated MongoDB repository implementations
+- Official MongoDB Java Driver
 - Request and response DTOs
 - Jakarta Bean Validation
+- Manual PATCH type validation
 - Centralized exception handling
 - Constructor dependency injection
-- Cloud-based real-time database
 - Automated Android and backend testing
 - Robolectric-based JVM testing
 - Mocked HTTP testing with MockWebServer
 - Spring integration testing with TestRestTemplate
-- Asynchronous Firebase operations with CompletableFuture
-- Transaction-safe water updates
-- Dynamic water-log data structure
+- MongoDB integration testing
+- Asynchronous repository contracts with CompletableFuture
+- MongoDB multi-document transactions
+- `withTransaction(...)` retry support for eligible transient failures
+- Transaction-based concurrency protection
+- Shared `transactionVersion` concurrency mechanism
+- MongoDB upsert operations
+- Unique and compound MongoDB indexes
+- Cascade deletion of user-related MongoDB data
+- Concurrency integrity tests
+- Individual water-record document storage
+- Historical calorie and goal storage
+- Single-node MongoDB replica set for local development
 - Separation between client, server, and database
 - Organized multi-project repository
-- API compatibility preserved during backend refactoring
+- API compatibility preserved during backend database migration
 - BCrypt password hashing
 - JWT-based authentication
 - User-specific authorization through JWT subject checks
