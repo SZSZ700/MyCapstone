@@ -196,19 +196,16 @@ public class MongoUserRepository implements UserRepository {
     // ---------------------------------------------------------------------
     @Override
     public CompletableFuture<Boolean> deleteByUsername(String username) {
-
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
 
             // Open a MongoDB client session.
             // The session is automatically closed when this block finishes.
             try (ClientSession session = mongoClient.startSession()) {
-
                 // Start a new MongoDB transaction.
                 session.startTransaction();
 
                 try {
-
                     // Find the user's ObjectId inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
 
