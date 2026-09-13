@@ -784,11 +784,11 @@ public class MongoUserRepository implements UserRepository {
                 // Apply the same BMI classification used before.
                 if (bmi < 18.5) {
                     underweight++;
-                } else if (bmi > 18.5 && bmi < 25.0) {
+                } else if (bmi >= 18.5 && bmi < 25.0) {
                     normal++;
-                } else if (bmi > 25.0 && bmi < 30.0) {
+                } else if (bmi >= 25.0 && bmi < 30.0) {
                     overweight++;
-                } else if (bmi > 30.0) {
+                } else if (bmi >= 30.0) {
                     obese++;
                 }
             }

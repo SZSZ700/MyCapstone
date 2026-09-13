@@ -114,26 +114,33 @@ public class UserService {
     // without modification.
     // ---------------------------------------------------------------------
     public CompletableFuture<User> patchUser(String username, Map<String, Object> updates) {
+        if (updates.containsKey("password") && !(updates.get("password") instanceof String)) {
+            throw new IllegalArgumentException("Password must be a string");
+        }
+
+        if (updates.containsKey("fullName") && !(updates.get("fullName") instanceof String)) {
+            throw new IllegalArgumentException("Full name must be a string");
+        }
+
+        if (updates.containsKey("age") && !(updates.get("age") instanceof Number)) {
+            throw new IllegalArgumentException("Age must be a number");
+        }
+
+        if (updates.containsKey("bmi") && !(updates.get("bmi") instanceof Number)) {
+            throw new IllegalArgumentException("BMI must be a number");
+        }
+
         // Check whether the PATCH request contains a password.
         if (updates.containsKey("password")) {
-            // Read the password value from the updates map.
-            var passwordValue = updates.get("password");
+            // Read the password as a String.
+            var password = (String) updates.get("password");
 
-            // Encode the password only when it is a valid String.
-            if (passwordValue instanceof String password) {
-                // Replace the raw password with its BCrypt hash.
-                updates.put(
-                        "password",
-                        passwordEncoder.encode(password)
-                );
-            }
+            // Replace the raw password with its BCrypt hash.
+            updates.put("password", passwordEncoder.encode(password));
         }
 
         // Send the requested fields to the repository.
-        return userRepository.patchByUsername(
-                username,
-                updates
-        );
+        return userRepository.patchByUsername(username, updates);
     }
 
     // ---------------------------------------------------------------------
