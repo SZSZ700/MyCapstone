@@ -39,7 +39,7 @@ JwtAuthenticationFilter
         ↓
 Backend Services
         ↓
-Firebase Realtime Database
+MongoDB
 ```
 
 The Android application is responsible for:
@@ -55,9 +55,9 @@ The Android application is responsible for:
 - Displaying water tracking and BMI information
 - Trusting the configured local development certificate during local HTTPS development
 
-The Android application does not communicate with Firebase directly.
+The Android application does not communicate with MongoDB directly.
 
-All Firebase access is performed through the Spring Boot backend.
+All MongoDB access is performed through the Spring Boot backend.
 
 ---
 
@@ -395,7 +395,7 @@ HTTPS PATCH Request
         ↓
 Spring Boot Server
         ↓
-Firebase Realtime Database
+MongoDB
         ↓
 HTTPS Response
         ↓
@@ -432,9 +432,9 @@ Authenticated requests continue
 
 The JWT is used only as an access credential for the Spring Boot API.
 
-It is not stored in Firebase.
+It is not stored in MongoDB.
 
-Sensitive backend credentials such as Firebase Admin credentials, JWT signing secrets, and server private keys are not stored inside the Android application.
+Sensitive backend credentials such as MongoDB connection credentials, JWT signing secrets, and server private keys are not stored inside the Android application.
 
 ---
 
@@ -724,7 +724,7 @@ Authorization: Bearer <JWT>
 The Android application does not contain:
 
 ```text
-Firebase Admin credentials
+MongoDB connection credentials
 JWT signing secret
 Spring Boot private key
 PKCS#12 server keystore
@@ -882,7 +882,7 @@ app/build/
 .gradle/
 ```
 
-The Android application does not contain Firebase Admin SDK credentials.
+The Android application does not contain MongoDB connection credentials.
 
 The Android application does not contain the JWT signing secret.
 
@@ -896,7 +896,7 @@ app/src/main/res/raw/hibari_local.crt
 
 may be included because it contains public certificate information only.
 
-All privileged Firebase operations are handled by the Spring Boot backend.
+All MongoDB operations are handled by the Spring Boot backend.
 
 ---
 
