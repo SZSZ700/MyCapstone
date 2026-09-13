@@ -1,4 +1,4 @@
-package org.example.CapstoneProject.repository.firebase;
+package org.example.CapstoneProject.repository.mongo;
 import com.mongodb.MongoWriteException;
 import com.mongodb.client.ClientSession;
 import com.mongodb.client.MongoClient;

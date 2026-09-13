@@ -53,4 +53,25 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(response);
     }
+
+    // ---------------------------------------------------------------------
+    // Handles invalid values detected manually inside the service layer.
+    //
+    // Returns HTTP 400 with the exception message.
+    // ---------------------------------------------------------------------
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalArgumentException(
+            IllegalArgumentException ex) {
+
+        // Build the response body.
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        // Add the error message.
+        response.put("error", ex.getMessage());
+
+        // Return HTTP 400 Bad Request.
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(response);
+    }
 }

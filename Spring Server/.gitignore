@@ -40,9 +40,6 @@ build/
 
 .env
 
-# Firebase Admin SDK credentials (DO NOT UPLOAD)
-src/main/resources/myfinaltopap-firebase-adminsdk-fbsvc-765944770e.json
-
 # Spring config (if contains secrets)
 src/main/resources/application.properties
 
