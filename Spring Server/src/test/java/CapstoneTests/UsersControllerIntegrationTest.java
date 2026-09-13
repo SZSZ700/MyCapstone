@@ -65,7 +65,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 @SuppressWarnings({"ConstantValue", "JavaPrintToLogpoint"})
 @SpringBootTest(
         classes = Application.class,
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "server.ssl.enabled=false"
 )
 // Use a single test instance for the whole class (allows @BeforeAll non-static)
 @TestInstance(Lifecycle.PER_CLASS)
