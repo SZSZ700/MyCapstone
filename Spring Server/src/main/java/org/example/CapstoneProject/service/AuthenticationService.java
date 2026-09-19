@@ -89,29 +89,21 @@ public class AuthenticationService {
     // Returns null when authentication fails.
     // ---------------------------------------------------------------------
     public CompletableFuture<User> login(String username, String password) {
-        // Get all users that match the provided username.
-        //
-        // With the UNIQUE username index, this normally contains
-        // either zero users or one user.
-        return userRepository.findAllByUsername(username).thenApply(users -> {
-
-            // Loop over all matching users.
-            for (User existingUser : users) {
-
-                // Skip invalid user records.
-                if (existingUser == null || existingUser.getPassword() == null) { continue; }
-
-                // Compare the raw password received from the client
-                // with the stored BCrypt password hash.
-                if (passwordEncoder.matches(password, existingUser.getPassword())) {
-
-                    // Return the authenticated user when the password matches.
-                    return existingUser;
-                }
+        // Find the single user matching the supplied username.
+        return userRepository.findByUsername(username).thenApply(existingUser -> {
+            // The user does not exist or has no stored password hash.
+            if (existingUser == null || existingUser.getPassword() == null) {
+                return null;
             }
 
-            // Return null when no matching authenticated user was found.
-            return null;
+            // Compare the raw password received from the client
+            // with the stored BCrypt password hash.
+            if (!passwordEncoder.matches(password, existingUser.getPassword())) {
+                return null;
+            }
+
+            // Credentials are valid.
+            return existingUser;
         });
     }
 }

@@ -66,11 +66,6 @@ public interface UserRepository {
     CompletableFuture<Boolean> create(User user);
 
     // ---------------------------------------------------------------------
-    // Returns all users that match the provided username.
-    // ---------------------------------------------------------------------
-    CompletableFuture<List<User>> findAllByUsername(String username);
-
-    // ---------------------------------------------------------------------
     // Updates the BMI value of a user.
     //
     // Returns true when the update succeeded.

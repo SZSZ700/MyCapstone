@@ -95,9 +95,7 @@ public class MongoUserRepository implements UserRepository {
             ).first();
 
             // Return null when no document was found.
-            if (document == null) {
-                return null;
-            }
+            if (document == null) { return null; }
 
             // Convert the MongoDB document into the existing User model.
             return mapUser(document);
@@ -430,38 +428,6 @@ public class MongoUserRepository implements UserRepository {
     }
 
     // ---------------------------------------------------------------------
-    // Returns all users matching the supplied username.
-    //
-    // Mongo raw:
-    //
-    // db.users.find({
-    //     username: username
-    // })
-    //
-    // With a UNIQUE username index this normally returns
-    // either zero users or one user.
-    // ---------------------------------------------------------------------
-    @Override
-    public CompletableFuture<List<User>> findAllByUsername(String username) {
-        // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
-
-            var result = new ArrayList<User>();
-
-            // Read all matching MongoDB documents.
-            for (Document document : users.find(
-                    eq("username", username)
-            )) {
-
-                // Convert each matching document into a User.
-                result.add(mapUser(document));
-            }
-
-            return result;
-        });
-    }
-
-    // ---------------------------------------------------------------------
     // Updates only the user's BMI value.
     //
     // Mongo raw:
@@ -703,31 +669,6 @@ public class MongoUserRepository implements UserRepository {
         // Return MongoDB's _id value.
         return document.getObjectId("_id");
     }
-
-    // ---------------------------------------------------------------------
-    // Finds the ObjectId belonging to a username inside a MongoDB session.
-    //
-    // Mongo raw:
-    // db.users.findOne({
-    //     username: username
-    // })
-    // Returns null when no matching user exists.
-    // ---------------------------------------------------------------------
-
-    private ObjectId findUserId(ClientSession session, String username) {
-
-        // Find the matching user document using the current transaction session.
-        Document document = users.find(
-                session,
-                eq("username", username)
-        ).first();
-
-        if (document == null) { return null; }
-
-        // Return MongoDB's _id value.
-        return document.getObjectId("_id");
-    }
-
 
     // ---------------------------------------------------------------------
     // Finds the user's ObjectId and updates transactionVersion
