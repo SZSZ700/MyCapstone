@@ -209,21 +209,15 @@ public class MongoUserRepository implements UserRepository {
                     // Find and lock the user document by incrementing
                     // transactionVersion inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
-
                     // The user does not exist.
-                    if (userId == null) {
-                        return false;
-                    }
+                    if (userId == null) { return false; }
 
                     // Delete all calorie records belonging to the user.
                     calories.deleteMany(session, eq("userId", userId));
-
                     // Delete all goal records belonging to the user.
                     goals.deleteMany(session, eq("userId", userId));
-
                     // Delete all water records belonging to the user.
                     waterRecords.deleteMany(session, eq("userId", userId));
-
                     // Delete the user document itself.
                     var result = users.deleteOne(session, eq("_id", userId));
 
@@ -244,14 +238,10 @@ public class MongoUserRepository implements UserRepository {
 
     // ---------------------------------------------------------------------
     // Updates the editable fields of an existing user.
-    //
     // The username is used only to locate the user.
     // The username itself is not changed.
-    //
     // BMI and all historical data remain unchanged.
-    //
     // Mongo raw:
-    //
     // db.users.updateOne({ username: username},
     //     {
     //         $set: {
@@ -261,7 +251,6 @@ public class MongoUserRepository implements UserRepository {
     //         }
     //     }
     // )
-    //
     // Returns the updated user.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
@@ -299,18 +288,14 @@ public class MongoUserRepository implements UserRepository {
 
     // ---------------------------------------------------------------------
     // Partially updates an existing user.
-    //
     // PATCH is dynamic, so the update fields depend on what the client sent.
-    //
     // Username changes are intentionally ignored.
     //
     // Example Mongo raw:
-    //
     // db.users.updateOne(
     //     {username: username},
     //     {$set: {fullName: "New Name",age: 30}}
     // )
-    //
     // Returns the updated user.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
@@ -451,7 +436,6 @@ public class MongoUserRepository implements UserRepository {
     //     age: age,
     //     bmi: bmi
     // })
-    //
     // This method preserves the original String-based response contract.
     // ---------------------------------------------------------------------
     @Override
@@ -560,7 +544,6 @@ public class MongoUserRepository implements UserRepository {
     public CompletableFuture<Integer> getCalories(String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
-
             // Resolve the username into the user's ObjectId.
             ObjectId userId = findUserId(username);
 
@@ -579,9 +562,7 @@ public class MongoUserRepository implements UserRepository {
             ).first();
 
             // No calories entry exists for today.
-            if (document == null) {
-                return 0;
-            }
+            if (document == null) { return 0; }
 
             // Return the stored calories value.
             return document.getInteger("calories", 0);
