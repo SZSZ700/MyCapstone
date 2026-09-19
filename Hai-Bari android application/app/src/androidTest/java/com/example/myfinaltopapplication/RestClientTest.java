@@ -371,10 +371,6 @@ public class RestClientTest {
         assertEquals("wrong", obj.getString("password"));
     }
 
-    // =============================================================
-    // TESTS FOR: updateUser(String username, User updatedUser)
-    // =============================================================
-
     // Helper method to drain any leftover requests from previous async calls
     private void drainRequests() throws InterruptedException {
         RecordedRequest leftover;
@@ -383,60 +379,6 @@ public class RestClientTest {
             System.out.println("⚠️ Drained leftover request: "
                     + leftover.getMethod() + " " + leftover.getPath());
         }
-    }
-
-    // Test that updateUser sends a PUT request with the correct path and JSON body, and returns true on 200
-    @Test
-    public void updateUser_success_sendsPutWithCorrectPathAndBodyAndReturnsTrue() throws Exception {
-        // Make sure there are no leftover requests from previous tests
-        drainRequests();
-
-        // Set a JWT token that should be attached to the protected request.
-        RestClient.setAuthToken("test-jwt-token");
-
-        // Enqueue a 200 OK response for updateUser
-        mockWebServer.enqueue(
-                new MockResponse()
-                        .setResponseCode(200)
-                        .setBody("{\"status\":\"OK\"}")
-        );
-
-        // Create an updated User object
-        var updated = new User("john", "newPass", 30, "New Name");
-
-        // Call updateUser on RestClient
-        var future = RestClient.updateUser("john", updated);
-
-        // Wait for Boolean result
-        var result = awaitBoolean(future);
-
-        // Assert that the call was successful (true)
-        assertTrue(result);
-
-        // Read the HTTP request received by MockWebServer
-        RecordedRequest request = mockWebServer.takeRequest(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-
-        // Assert that request is not null
-        assertNotNull(request);
-
-        // Assert that the HTTP method is PUT
-        assertEquals("PUT", request.getMethod());
-
-        // Assert that the path is exactly /myapp/api/users/john
-        assertEquals("/myapp/api/users/john", request.getPath());
-
-        // Assert that the JWT was sent in the Authorization header.
-        assertEquals("Bearer test-jwt-token", request.getHeader("Authorization"));
-
-        // Deep check: assert on JSON request body
-        String body = request.getBody().readUtf8();
-        JSONObject obj = new JSONObject(body);
-
-        // Check that all fields in the JSON body match the updated user
-        assertEquals("john",     obj.getString("userName"));
-        assertEquals("newPass",  obj.getString("password"));
-        assertEquals("New Name", obj.getString("fullName"));
-        assertEquals(30,         obj.getInt("age"));
     }
 
     // =============================================================
@@ -1312,61 +1254,6 @@ public class RestClientTest {
         assertEquals("pwd", obj.getString("password"));
     }
 
-    // =============================================================
-    // FAILURE TESTS FOR: updateUser(String username, User updatedUser)
-    // =============================================================
-
-    // Test that updateUser returns false when server responds with 404 Not Found
-    @Test
-    public void updateUser_notFound_returnsFalse() throws Exception {
-        // Clear any leftover requests
-        drainRequests();
-
-        // Set a JWT token that should be attached to the protected request.
-        RestClient.setAuthToken("test-jwt-token");
-
-        // Enqueue a 404 response for updating a non-existing user
-        mockWebServer.enqueue(
-                new MockResponse()
-                        .setResponseCode(404)
-                        .setBody("User not found")
-        );
-
-        // Create an updated user object
-        var updated = new User("ghost", "newPass", 30, "Missing Person");
-
-        // Call updateUser on RestClient
-        var future = RestClient.updateUser("ghost", updated);
-
-        // Wait for Boolean result (expected false)
-        var result = awaitBoolean(future);
-
-        // Assert that updateUser reports false on 404
-        assertFalse(result);
-
-        // --------- REQUEST ASSERTIONS ---------
-
-        // Consume request
-        RecordedRequest request = mockWebServer.takeRequest(FUTURE_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-        assertNotNull(request);
-
-        // Method must be PUT
-        assertEquals("PUT", request.getMethod());
-
-        // Path must include the username "ghost"
-        assertEquals("/myapp/api/users/ghost", request.getPath());
-
-        // Assert that the JWT was sent in the Authorization header.
-        assertEquals("Bearer test-jwt-token", request.getHeader("Authorization"));
-
-        // Verify JSON body
-        var body = request.getBody().readUtf8();
-        var obj = new JSONObject(body);
-        assertEquals("ghost", obj.getString("userName"));
-        assertEquals("newPass", obj.getString("password"));
-        assertEquals("Missing Person", obj.getString("fullName"));
-        assertEquals(30, obj.getInt("age"));
-    }
 
     // =============================================================
     // FAILURE TESTS FOR: patchUser(String username, Map<String,Object> updates)

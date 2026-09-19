@@ -255,43 +255,6 @@ public class RestClient {
     }
 
     // =========================================================
-    // UPDATE (PUT /api/users/{username})
-    // =========================================================
-    public static CompletableFuture<Boolean> updateUser(String username, User updatedUser) {
-        // CompletableFuture for async result
-        var future = new CompletableFuture<Boolean>();
-
-        try {
-            // Build JSON with updated user info
-            var json = new JSONObject();
-            json.put("userName", updatedUser.getUserName());
-            json.put("password", updatedUser.getPassword());
-            json.put("fullName", updatedUser.getFullName());
-            json.put("age", updatedUser.getAge());
-
-            // Create request body
-            var body = RequestBody.create(json.toString(), JSON);
-
-            // Build PUT request
-            var request = new Request.Builder()
-                    .header("Authorization", "Bearer " + authToken)
-                    .url(BASE_URL + "/" + username) // Endpoint with username path
-                    .put(body)                      // Use PUT method
-                    .build();
-
-            // Send async request
-            client.newCall(request).enqueue(callbackBoolean(future));
-
-        } catch (Exception e) {
-            // On error -> complete false
-            future.complete(false);
-        }
-
-        // Return future
-        return future;
-    }
-
-    // =========================================================
     // PATCH (PATCH /api/users/{username})
     // =========================================================
     public static CompletableFuture<Boolean> patchUser(String username, Map<String, Object> updates) {
