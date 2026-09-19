@@ -12,13 +12,12 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
+import static com.mongodb.client.model.Accumulators.sum;
+import static com.mongodb.client.model.Aggregates.group;
+import static com.mongodb.client.model.Aggregates.match;
 import static com.mongodb.client.model.Filters.and;
 import static com.mongodb.client.model.Filters.eq;
 import static com.mongodb.client.model.Filters.gte;
@@ -133,7 +132,8 @@ public class MongoWaterRepository implements WaterRepository {
                     if (userId == null) { return false; }
 
                     // Insert one new water record inside the transaction.
-                    waterRecords.insertOne(session,
+                    waterRecords.insertOne(
+                            session,
                             new Document("userId", userId)
                                     .append("amountMl", waterAmount)
                                     .append("recordedAt", new Date())
@@ -173,20 +173,15 @@ public class MongoWaterRepository implements WaterRepository {
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the user.
             ObjectId userId = findUserId(username);
-
-            if (userId == null) {
-                return null;
-            }
+            if (userId == null) { return null; }
 
             // Get today's date.
             LocalDate today = LocalDate.now();
-
             // Calculate yesterday.
             LocalDate yesterday = today.minusDays(1);
 
             // Start at 00:00 yesterday.
             Date start = startOfDay(yesterday);
-
             // Stop before 00:00 tomorrow.
             Date end = startOfDay(today.plusDays(1));
 
@@ -210,22 +205,15 @@ public class MongoWaterRepository implements WaterRepository {
                 Number amount = document.get("amountMl", Number.class);
 
                 // Ignore malformed or incomplete records.
-                if (recordedAt == null || amount == null) {
-                    continue;
-                }
+                if (recordedAt == null || amount == null) { continue; }
 
                 // Convert MongoDB's timestamp into LocalDate.
                 LocalDate recordDate = toLocalDate(recordedAt);
 
                 // Add the amount to today's total.
-                if (recordDate.equals(today)) {
-                    todayWater += amount.longValue();
-                }
-
+                if (recordDate.equals(today)) { todayWater += amount.longValue(); }
                 // Add the amount to yesterday's total.
-                else if (recordDate.equals(yesterday)) {
-                    yesterdayWater += amount.longValue();
-                }
+                else if (recordDate.equals(yesterday)) { yesterdayWater += amount.longValue(); }
             }
 
             // Build the same JSON response used by the existing application.
@@ -239,94 +227,127 @@ public class MongoWaterRepository implements WaterRepository {
     }
 
     // ---------------------------------------------------------------------
-    // Returns water history for the requested number of days.
-    //
+    // Returns the user's water history for the requested number of days.
     // Mongo raw:
-    //
-    // db.water_records.find({
-    //     userId: userId,
-    //     recordedAt: {
-    //         $gte: start,
-    //         $lt: end
+    // db.water_records.aggregate([
+    //     {
+    //         $match: {
+    //             userId: userId,
+    //             recordedAt: {
+    //                 $gte: start,
+    //                 $lt: end
+    //             }
+    //         }
+    //     },
+    //     {
+    //         $group: {
+    //             _id: {
+    //                 $dateToString: {
+    //                     format: "%Y-%m-%d",
+    //                     date: "$recordedAt",
+    //                     timezone: "Asia/Jerusalem"
+    //                 }
+    //             },
+    //             total: {
+    //                 $sum: "$amountMl"
+    //             }
+    //         }
     //     }
-    // })
+    // ])
     //
-    // Java pre-creates every requested day with a value of zero.
+    // The aggregation pipeline performs two main operations:
+    // 1. $match
+    //    Filters the water records so MongoDB only processes:
+    //    - records belonging to the requested user
+    //    - records inside the requested date range
     //
-    // Every drink returned from MongoDB is then added to the correct day.
+    // 2. $group
+    //    Groups all matching water records by calendar date
+    //    and calculates the total amount of water consumed
+    //    on each day using $sum.
     //
-    // This preserves the original behavior:
-    // missing days still appear in the result with 0.
+    // MongoDB therefore performs the daily calculation directly
+    // instead of returning every individual drink to Java.
     // ---------------------------------------------------------------------
     @Override
     public CompletableFuture<Map<String, Long>> getWaterHistoryMap(String username, int days) {
         // Run the synchronous MongoDB operation asynchronously.
+        // The MongoDB Java Driver used here is synchronous,
+        // therefore supplyAsync prevents the database work from being
+        // executed directly on the calling thread.
         return CompletableFuture.supplyAsync(() -> {
-            // Resolve the username into the user's ObjectId.
+            // Resolve the supplied username into MongoDB's ObjectId.
             ObjectId userId = findUserId(username);
 
-            if (userId == null) {
-                return null;
-            }
+            // If the user does not exist, there is no water history to return.
+            if (userId == null) { return null; }
 
             // LinkedHashMap preserves insertion order.
-            //
-            // The order is:
-            // today,
-            // yesterday,
-            // older days...
+            // The dates are inserted starting from today and moving backwards,
             Map<String, Long> result = new LinkedHashMap<>();
-
+            // Get the current local calendar date.
             LocalDate today = LocalDate.now();
 
-            // Create every requested date with an initial value of zero.
+            // Pre-create every requested date with a default water total of 0.
+            // MongoDB's $group only returns dates that contain records.
+            // By creating all dates here first, days without water records
+            // still appear in the response.
             for (var i = 0; i < days; i++) {
                 result.put(today.minusDays(i).toString(), 0L);
             }
 
-            // When no days were requested, return the empty map.
-            if (days <= 0) {
-                return result;
-            }
+            // If zero or a negative number of days was requested,
+            if (days <= 0) { return result; }
 
-            // Calculate the oldest date that should be included.
-            LocalDate oldestDate = today.minusDays(days - 1);
+            // Calculate the beginning of the oldest requested day.
+            Date start = startOfDay(today.minusDays(days - 1));
 
-            // Start at the beginning of the oldest requested day.
-            Date start = startOfDay(oldestDate);
-
-            // Stop before the beginning of tomorrow.
+            // The upper bound is the beginning of tomorrow.
+            // The query uses $lt instead of $lte so the range becomes:
+            // start <= recordedAt < tomorrow
             Date end = startOfDay(today.plusDays(1));
 
-            // Read all drinks inside the requested time range.
-            for (Document document : waterRecords.find(
-                    and(
+            // Execute the aggregation directly in MongoDB.
+            for (Document document : waterRecords.aggregate(List.of(
+                    // $match reduces the records to only:
+                    // - the requested user
+                    // - the requested date range
+                    match(and(
                             eq("userId", userId),
                             gte("recordedAt", start),
                             lt("recordedAt", end)
+                    )),
+                    // $dateToString converts the BSON Date into a yyyy-MM-dd key.
+                    // $group then groups those records by local date
+                    // and sums amountMl for each date.
+                    group(new Document("$dateToString",
+                                    new Document("format", "%Y-%m-%d")
+                                            .append("date", "$recordedAt")
+                                            .append("timezone", "Asia/Jerusalem")
+                            ),
+
+                            // Sum all amountMl values belonging to the same date.
+                            sum("total", "$amountMl")
                     )
-            )) {
+            ))) {
 
-                // Read the drink timestamp.
-                Date recordedAt = document.getDate("recordedAt");
+                // The $group _id contains the formatted date,
+                String date = document.getString("_id");
+                // Read the daily total calculated by MongoDB.
+                Number total = document.get("total", Number.class);
 
-                // Read the drink amount.
-                Number amount = document.get("amountMl", Number.class);
-
-                // Ignore malformed records.
-                if (recordedAt == null || amount == null) {
-                    continue;
-                }
-
-                // Convert the timestamp into yyyy-MM-dd.
-                String dateKey = toLocalDate(recordedAt).toString();
-
-                // Add the drink to the existing total for that date.
-                if (result.containsKey(dateKey)) {
-                    result.put(dateKey, result.get(dateKey) + amount.longValue());
+                if (date != null && total != null) {
+                    // Replace the default zero value created earlier
+                    // with the total calculated by MongoDB.
+                    result.put(date, total.longValue());
                 }
             }
 
+            // Return the complete ordered history.
+            //
+            // Every requested day is present:
+            // - days containing records have their calculated MongoDB total
+            // - days without records remain 0
             return result;
         });
     }
@@ -566,11 +587,8 @@ public class MongoWaterRepository implements WaterRepository {
                 return session.withTransaction(() -> {
                     // Find and lock the user inside the current transaction.
                     ObjectId userId = lockAndFindUserId(session, username);
-
                     // The user does not exist.
-                    if (userId == null) {
-                        return false;
-                    }
+                    if (userId == null) { return false; }
 
                     // Build today's yyyy-MM-dd key.
                     String today = LocalDate.now().toString();
