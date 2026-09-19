@@ -354,11 +354,6 @@ public class MongoUserRepository implements UserRepository {
             // Reject invalid usernames before contacting MongoDB.
             if (username == null || username.isBlank()) { return false; }
 
-            // Check whether the username already exists.
-            if (users.countDocuments(eq("username", username)) > 0) {
-                return false;
-            }
-
             try {
                 // Insert the new user document.
                 users.insertOne(userToDocument(user));
@@ -367,9 +362,7 @@ public class MongoUserRepository implements UserRepository {
                 // Duplicate key error caused by the UNIQUE username index.
                 // This protects against a race condition where two signup
                 // requests pass the existence check at nearly the same time.
-                if (e.getError().getCode() == 11000) {
-                    return false;
-                }
+                if (e.getError().getCode() == 11000) { return false; }
 
                 // Re-throw every other MongoDB write error.
                 throw e;
