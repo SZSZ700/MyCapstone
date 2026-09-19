@@ -254,31 +254,15 @@ public class MongoWaterRepository implements WaterRepository {
     //         }
     //     }
     // ])
-    //
-    // The aggregation pipeline performs two main operations:
-    // 1. $match
-    //    Filters the water records so MongoDB only processes:
-    //    - records belonging to the requested user
-    //    - records inside the requested date range
-    //
-    // 2. $group
-    //    Groups all matching water records by calendar date
-    //    and calculates the total amount of water consumed
-    //    on each day using $sum.
-    //
     // MongoDB therefore performs the daily calculation directly
     // instead of returning every individual drink to Java.
     // ---------------------------------------------------------------------
     @Override
     public CompletableFuture<Map<String, Long>> getWaterHistoryMap(String username, int days) {
         // Run the synchronous MongoDB operation asynchronously.
-        // The MongoDB Java Driver used here is synchronous,
-        // therefore supplyAsync prevents the database work from being
-        // executed directly on the calling thread.
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the supplied username into MongoDB's ObjectId.
             ObjectId userId = findUserId(username);
-
             // If the user does not exist, there is no water history to return.
             if (userId == null) { return null; }
 
@@ -287,11 +271,7 @@ public class MongoWaterRepository implements WaterRepository {
             Map<String, Long> result = new LinkedHashMap<>();
             // Get the current local calendar date.
             LocalDate today = LocalDate.now();
-
             // Pre-create every requested date with a default water total of 0.
-            // MongoDB's $group only returns dates that contain records.
-            // By creating all dates here first, days without water records
-            // still appear in the response.
             for (var i = 0; i < days; i++) {
                 result.put(today.minusDays(i).toString(), 0L);
             }
@@ -301,9 +281,7 @@ public class MongoWaterRepository implements WaterRepository {
 
             // Calculate the beginning of the oldest requested day.
             Date start = startOfDay(today.minusDays(days - 1));
-
             // The upper bound is the beginning of tomorrow.
-            // The query uses $lt instead of $lte so the range becomes:
             // start <= recordedAt < tomorrow
             Date end = startOfDay(today.plusDays(1));
 
