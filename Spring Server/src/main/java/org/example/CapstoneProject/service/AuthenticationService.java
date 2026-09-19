@@ -27,13 +27,9 @@ public class AuthenticationService {
     // ---------------------------------------------------------------------
     // Builds the service using constructor injection.
     // ---------------------------------------------------------------------
-    public AuthenticationService(
-            UserRepository userRepository,
-            PasswordEncoder passwordEncoder) {
-
+    public AuthenticationService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
         // Store the injected repository.
         this.userRepository = userRepository;
-
         // Store the injected password encoder.
         this.passwordEncoder = passwordEncoder;
     }
@@ -43,18 +39,18 @@ public class AuthenticationService {
     //
     // The method:
     // 1. Validates the username.
-    // 2. Checks whether the username already exists.
-    // 3. Encodes the raw password using BCrypt.
-    // 4. Sends the user to the repository for storage.
+    // 2. Encodes the raw password using BCrypt.
+    // 3. Sends the user to the repository for creation.
+    //
+    // The repository checks whether the username already exists.
     //
     // The database also has a UNIQUE username index.
-    //
-    // Therefore, even if two signup requests pass the initial existence
-    // check at almost the same time, the database still prevents duplicate
-    // usernames.
-    //
-    // If the repository reports MongoDB duplicate-key error E11000,
-    // it is converted into the same "Username already exists" result.
+    // Therefore, even if two signup requests happen at almost the same time,
+    // MongoDB still prevents duplicate usernames.
+    // Returns:
+    // - "User created successfully" when the user was created.
+    // - "Username already exists" when the username is already in use.
+    // - "Error: invalid username" for an invalid username.
     // ---------------------------------------------------------------------
     public CompletableFuture<String> signup(User user) {
         // Extract the username safely.
@@ -65,30 +61,18 @@ public class AuthenticationService {
             return CompletableFuture.completedFuture("Error: invalid username");
         }
 
-        // Query the repository before attempting to create the user.
-        return userRepository.findByUsername(username).thenCompose(existingUser -> {
+        // Hash the raw password using BCrypt before sending
+        // the user to the repository.
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
 
-            // Username already exists.
-            if (existingUser != null) {
-                return CompletableFuture.completedFuture("Username already exists");
+        // Ask the repository to create the user.
+        return userRepository.create(user).thenApply(created -> {
+            // The username already exists.
+            if (!created) {
+                return "Username already exists";
             }
 
-            // Hash the raw password using BCrypt before sending
-            // the user to the repository.
-            user.setPassword(passwordEncoder.encode(user.getPassword()));
-
-            // Store the user with the BCrypt password hash.
-            return userRepository.insert(user).thenApply(result -> {
-
-                // A concurrent signup may pass the previous existence check
-                // but still fail because the UNIQUE username index prevents
-                // the duplicate insert.
-                if (result != null && result.contains("E11000")) {
-                    return "Username already exists";
-                }
-
-                return result;
-            });
+            return "User created successfully";
         });
     }
 

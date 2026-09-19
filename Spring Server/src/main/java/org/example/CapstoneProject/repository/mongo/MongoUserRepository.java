@@ -372,7 +372,9 @@ public class MongoUserRepository implements UserRepository {
 
     // ---------------------------------------------------------------------
     // Creates a new user.
+    //
     // Mongo raw:
+    //
     // db.users.countDocuments({
     //     username: username
     // })
@@ -382,7 +384,8 @@ public class MongoUserRepository implements UserRepository {
     //     passwordHash: password,
     //     fullName: fullName,
     //     age: age,
-    //     bmi: bmi
+    //     bmi: bmi,
+    //     transactionVersion: 0
     // })
     //
     // Returns false when:
@@ -390,8 +393,8 @@ public class MongoUserRepository implements UserRepository {
     // - username is null
     // - username is blank
     // - username already exists
-    //
-    // A UNIQUE index on username should still exist in MongoDB.
+    // A UNIQUE index on username still protects against concurrent
+    // duplicate signup requests.
     // ---------------------------------------------------------------------
     @Override
     public CompletableFuture<Boolean> create(User user) {
@@ -413,49 +416,15 @@ public class MongoUserRepository implements UserRepository {
                 users.insertOne(userToDocument(user));
                 return true;
             } catch (MongoWriteException e) {
-
-                // MongoDB duplicate key error.
-                //
-                // This protects against race conditions when two requests
-                // try to create the same username at almost the same time.
-                if (e.getError().getCode() == 11000) { return false; }
+                // Duplicate key error caused by the UNIQUE username index.
+                // This protects against a race condition where two signup
+                // requests pass the existence check at nearly the same time.
+                if (e.getError().getCode() == 11000) {
+                    return false;
+                }
 
                 // Re-throw every other MongoDB write error.
                 throw e;
-            }
-        });
-    }
-
-    // ---------------------------------------------------------------------
-    // Inserts a new user.
-    // Mongo raw:
-    // db.users.insertOne({
-    //     username: userName,
-    //     passwordHash: password,
-    //     fullName: fullName,
-    //     age: age,
-    //     bmi: bmi
-    // })
-    // This method preserves the original String-based response contract.
-    // ---------------------------------------------------------------------
-    @Override
-    public CompletableFuture<String> insert(User user) {
-
-        return CompletableFuture.supplyAsync(() -> {
-
-            try {
-                // Insert the user document.
-                users.insertOne(
-                        userToDocument(user)
-                );
-
-                return "User created successfully";
-
-            } catch (Exception e) {
-
-                // Preserve the original method behavior:
-                // return the error as a String instead of failing the Future.
-                return "Error: " + e.getMessage();
             }
         });
     }

@@ -66,14 +66,6 @@ public interface UserRepository {
     CompletableFuture<Boolean> create(User user);
 
     // ---------------------------------------------------------------------
-    // Inserts a new user into the database.
-    //
-    // Returns a success message when the user was inserted successfully.
-    // Returns an error message when the database write failed.
-    // ---------------------------------------------------------------------
-    CompletableFuture<String> insert(User user);
-
-    // ---------------------------------------------------------------------
     // Returns all users that match the provided username.
     // ---------------------------------------------------------------------
     CompletableFuture<List<User>> findAllByUsername(String username);
