@@ -88,15 +88,10 @@ public class MongoUserRepository implements UserRepository {
     public CompletableFuture<User> findByUsername(String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
-
             // Find the first document whose username matches.
-            Document document = users.find(
-                    eq("username", username)
-            ).first();
-
+            Document document = users.find(eq("username", username)).first();
             // Return null when no document was found.
             if (document == null) { return null; }
-
             // Convert the MongoDB document into the existing User model.
             return mapUser(document);
         });
@@ -286,8 +281,7 @@ public class MongoUserRepository implements UserRepository {
                 //     username: username
                 // })
                 Document currentDocument = users.find(
-                        eq("username", username)
-                ).first();
+                        eq("username", username)).first();
 
                 if (currentDocument == null) { return null; }
 
@@ -394,8 +388,7 @@ public class MongoUserRepository implements UserRepository {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Update only the bmi field.
-            var result = users.updateOne(
-                    eq("username", username),
+            var result = users.updateOne(eq("username", username),
                     set("bmi", bmi)
             );
 
@@ -558,28 +551,20 @@ public class MongoUserRepository implements UserRepository {
                 // Read the BMI as Number because BSON numeric values
                 // may be represented by different Java numeric types.
                 Number bmiNumber = document.get("bmi", Number.class);
-
                 // Ignore users without a BMI value.
                 if (bmiNumber == null) { continue; }
-
                 // Convert to primitive double for comparison.
                 var bmi = bmiNumber.doubleValue();
 
                 // Apply the same BMI classification used before.
-                if (bmi < 18.5) {
-                    underweight++;
-                } else if (bmi >= 18.5 && bmi < 25.0) {
-                    normal++;
-                } else if (bmi >= 25.0 && bmi < 30.0) {
-                    overweight++;
-                } else if (bmi >= 30.0) {
-                    obese++;
-                }
+                if (bmi < 18.5) { underweight++; }
+                else if (bmi >= 18.5 && bmi < 25.0) { normal++; }
+                else if (bmi >= 25.0 && bmi < 30.0) { overweight++; }
+                else if (bmi >= 30.0) { obese++; }
             }
 
             // LinkedHashMap preserves the desired output order.
-            Map<String, Integer> distribution = new LinkedHashMap<>();
-
+            var distribution = new LinkedHashMap<String, Integer>();
             distribution.put("Underweight", underweight);
             distribution.put("Normal", normal);
             distribution.put("Overweight", overweight);
@@ -601,14 +586,9 @@ public class MongoUserRepository implements UserRepository {
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     private ObjectId findUserId(String username) {
-
         // Find the matching user document.
-        Document document = users.find(
-                eq("username", username)
-        ).first();
-
+        Document document = users.find(eq("username", username)).first();
         if (document == null) { return null; }
-
         // Return MongoDB's _id value.
         return document.getObjectId("_id");
     }
@@ -673,19 +653,15 @@ public class MongoUserRepository implements UserRepository {
     // bmi
     // ---------------------------------------------------------------------
     private User mapUser(Document document) {
-
         // Create an empty User object.
         var user = new User();
-
         // Copy String fields.
         user.setUserName(document.getString("username"));
         user.setPassword(document.getString("passwordHash"));
         user.setFullName(document.getString("fullName"));
-
         // Read numeric fields safely.
         Number age = document.get("age", Number.class);
         Number bmi = document.get("bmi", Number.class);
-
         // Use safe defaults when a value is missing.
         user.setAge(age == null ? 0 : age.intValue());
         user.setBmi(bmi == null ? 0.0 : bmi.doubleValue());
