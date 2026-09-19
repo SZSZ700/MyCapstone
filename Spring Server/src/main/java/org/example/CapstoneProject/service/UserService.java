@@ -81,30 +81,6 @@ public class UserService {
     }
 
     // ---------------------------------------------------------------------
-    // Updates the editable fields of an existing user.
-    //
-    // Before updating the user, the raw password received from the client
-    // is encoded with BCrypt so a plaintext password is never sent
-    // to the repository or stored in the database.
-    // ---------------------------------------------------------------------
-    public CompletableFuture<User> updateUser(String username, User updatedUser) {
-        // Encode the raw password before sending the user
-        // to the repository layer.
-        updatedUser.setPassword(
-                passwordEncoder.encode(
-                        updatedUser.getPassword()
-                )
-        );
-
-        // Update the user in the repository and return
-        // the complete updated user.
-        return userRepository.updateByUsername(
-                username,
-                updatedUser
-        );
-    }
-
-    // ---------------------------------------------------------------------
     // Partially updates an existing user.
     //
     // If the update contains a password, the raw password is encoded

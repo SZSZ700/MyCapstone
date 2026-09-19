@@ -4,7 +4,6 @@ package org.example.CapstoneProject.web;
 import org.example.CapstoneProject.dto.LoginRequest;
 import org.example.CapstoneProject.dto.SignupRequest;
 import org.example.CapstoneProject.dto.UserResponse;
-import org.example.CapstoneProject.dto.UpdateUserRequest;
 import org.example.CapstoneProject.dto.WaterResponse;
 import org.example.CapstoneProject.dto.GoalResponse;
 import org.example.CapstoneProject.dto.CaloriesResponse;
@@ -249,56 +248,6 @@ public class UsersController {
             // Return HTTP 200 with the user response DTO.
             return ResponseEntity.ok(response);
         });
-    }
-
-    // ---------------------------------------------------------------------
-    // UPDATE USER (PUT /api/users/{username})
-    //
-    // Updates the user's editable fields while preserving existing
-    // health and water-related data.
-    // ---------------------------------------------------------------------
-    @PutMapping("/{username}")
-    public CompletableFuture<ResponseEntity<?>> updateUser(
-            @PathVariable("username") String username,
-            @Valid @RequestBody UpdateUserRequest updateRequest) {
-
-        // Create a User model from the update request data.
-        var updatedUser = new User();
-
-        // Keep the username from the path parameter.
-        updatedUser.setUserName(username);
-
-        // Copy the password from the request.
-        updatedUser.setPassword(updateRequest.getPassword());
-
-        // Copy the full name from the request.
-        updatedUser.setFullName(updateRequest.getFullName());
-
-        // Copy the age from the request.
-        updatedUser.setAge(updateRequest.getAge());
-
-        // Update the user and receive the complete updated user back.
-        return userService.updateUser(username, updatedUser)
-                .thenApply(savedUser -> {
-
-                    // If no matching user exists, return 404.
-                    if (savedUser == null) {
-                        return ResponseEntity
-                                .status(HttpStatus.NOT_FOUND)
-                                .body("User not found");
-                    }
-
-                    // Create the response DTO from the complete updated user.
-                    var response = new UserResponse(
-                            savedUser.getUserName(),
-                            savedUser.getAge(),
-                            savedUser.getFullName(),
-                            savedUser.getBmi()
-                    );
-
-                    // Return HTTP 200 with the updated user response.
-                    return ResponseEntity.ok(response);
-                });
     }
 
     // ---------------------------------------------------------------------

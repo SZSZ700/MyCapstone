@@ -235,56 +235,6 @@ public class MongoUserRepository implements UserRepository {
     }
 
     // ---------------------------------------------------------------------
-    // Updates the editable fields of an existing user.
-    // The username is used only to locate the user.
-    // The username itself is not changed.
-    // BMI and all historical data remain unchanged.
-    // Mongo raw:
-    // db.users.updateOne({ username: username},
-    //     {
-    //         $set: {
-    //             passwordHash: updatedUser.password,
-    //             fullName: updatedUser.fullName,
-    //             age: updatedUser.age
-    //         }
-    //     }
-    // )
-    // Returns the updated user.
-    // Returns null when no matching user exists.
-    // ---------------------------------------------------------------------
-    @Override
-    public CompletableFuture<User> updateByUsername(String username, User updatedUser) {
-        // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
-            // Update only the editable fields.
-            var result = users.updateOne(eq("username", username),
-                    combine(
-                            set("passwordHash", updatedUser.getPassword()),
-                            set("fullName", updatedUser.getFullName()),
-                            set("age", updatedUser.getAge())
-                    )
-            );
-
-            // matchedCount is zero when no user matched the username.
-            if (result.getMatchedCount() == 0) { return null; }
-
-            // Mongo raw:
-            // db.users.findOne({
-            //     username: username
-            // })
-            // Read the updated user again so the method can return
-            // the complete current user object.
-            Document updatedDocument = users.find(
-                    eq("username", username)
-            ).first();
-
-            if (updatedDocument == null) { return null; }
-
-            return mapUser(updatedDocument);
-        });
-    }
-
-    // ---------------------------------------------------------------------
     // Partially updates an existing user.
     // PATCH is dynamic, so the update fields depend on what the client sent.
     // Username changes are intentionally ignored.
