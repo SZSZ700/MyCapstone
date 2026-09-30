@@ -2,8 +2,8 @@
 package org.example.CapstoneProject.web;
 // Import the User model (POJO with username, password, age, fullName)
 import org.example.CapstoneProject.dto.*;
-import org.example.CapstoneProject.model.User;
 // Import the Firebase service that handles database operations
+import org.example.CapstoneProject.model.User;
 import org.example.CapstoneProject.service.*;
 // Import Spring framework classes for HTTP status and response handling
 import org.springframework.http.HttpStatus;
@@ -177,9 +177,9 @@ public class UsersController {
             // Create the login response containing the JWT and public user data.
             var response = new LoginResponse(
                     token,
-                    user.getUserName(),
+                    Objects.requireNonNull(user.getUserName()),
                     user.getAge(),
-                    user.getFullName(),
+                    Objects.requireNonNull(user.getFullName()),
                     user.getBmi()
             );
 
@@ -201,9 +201,9 @@ public class UsersController {
             // Convert each internal User model into a UserResponse DTO.
             var response = users.stream()
                     .map(user -> new UserResponse(
-                            user.getUserName(),
+                            Objects.requireNonNull(user.getUserName()),
                             user.getAge(),
-                            user.getFullName(),
+                            Objects.requireNonNull(user.getFullName()),
                             user.getBmi()
                     ))
                     .collect(Collectors.toList());
@@ -232,9 +232,9 @@ public class UsersController {
 
             // Create a response DTO from the internal User model.
             var response = new UserResponse(
-                    user.getUserName(),
+                    Objects.requireNonNull(user.getUserName()),
                     user.getAge(),
-                    user.getFullName(),
+                    Objects.requireNonNull(user.getFullName()),
                     user.getBmi()
             );
 
@@ -262,9 +262,9 @@ public class UsersController {
 
             // Create a response DTO from the updated User model.
             var response = new UserResponse(
-                    updatedUser.getUserName(),
+                    Objects.requireNonNull(updatedUser.getUserName()),
                     updatedUser.getAge(),
-                    updatedUser.getFullName(),
+                    Objects.requireNonNull(updatedUser.getFullName()),
                     updatedUser.getBmi()
             );
 

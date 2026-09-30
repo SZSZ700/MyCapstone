@@ -10,6 +10,7 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.example.CapstoneProject.model.User;
 import org.example.CapstoneProject.repository.UserRepository;
+import org.jetbrains.annotations.NotNull;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Repository;
 
@@ -104,7 +105,7 @@ public class MongoUserRepository implements UserRepository {
     // db.users.find({})
     // ---------------------------------------------------------------------
     @Override
-    public @NonNull CompletableFuture<List<User>> findAll() {
+    public @NotNull CompletableFuture<List<User>> findAll() {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Create the result list.

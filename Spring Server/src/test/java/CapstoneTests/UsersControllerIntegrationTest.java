@@ -4,6 +4,7 @@ import org.example.CapstoneProject.Application;
 // Import JUnit 5 test annotations
 import org.example.CapstoneProject.dto.LoginResponse;
 import org.example.CapstoneProject.dto.UserResponse;
+import org.example.CapstoneProject.model.User;
 import org.example.CapstoneProject.service.UserService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -20,7 +21,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 // Import UserService to prepare and clean up test users through the service layer
 import org.example.CapstoneProject.service.JwtService;
 // Import the User model used in requests and responses
-import org.example.CapstoneProject.model.User;
 // Import Spring's TestRestTemplate for real HTTP calls to the running server
 import org.springframework.boot.test.web.client.TestRestTemplate;
 // Import ResponseEntity and HttpStatus for inspecting HTTP responses
