@@ -1,9 +1,9 @@
-package org.example.CapstoneProject.service;
-import org.example.CapstoneProject.repository.WaterRepository;
-import org.json.JSONObject;
-import org.springframework.stereotype.Service;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+@file:Suppress("PackageName")
+package org.example.CapstoneProject.service
+import org.example.CapstoneProject.repository.WaterRepository
+import org.json.JSONObject
+import org.springframework.stereotype.Service
+import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
 // Contains business logic related to water operations.
@@ -15,17 +15,10 @@ import java.util.concurrent.CompletableFuture;
 // remains inside the repository implementation.
 // -------------------------------------------------------------------------
 @Service
-public class WaterService {
+class WaterService(
     // Repository used to access water-related data.
-    private final WaterRepository waterRepository;
-
-    // ---------------------------------------------------------------------
-    // Builds the service using constructor injection.
-    // ---------------------------------------------------------------------
-    public WaterService(WaterRepository waterRepository) {
-        // Store the injected repository.
-        this.waterRepository = waterRepository;
-    }
+    private val waterRepository: WaterRepository
+) {
 
     // ---------------------------------------------------------------------
     // Adds one water drink for the user.
@@ -36,9 +29,9 @@ public class WaterService {
     // Returns true when the update succeeded.
     // Returns false when the user was not found or the value is invalid.
     // ---------------------------------------------------------------------
-    public CompletableFuture<Boolean> updateWater(String username, int waterAmount) {
+    fun updateWater(username: String, waterAmount: Int): CompletableFuture<Boolean> {
         // Delegate the data operation to the repository layer.
-        return waterRepository.updateWater(username, waterAmount);
+        return waterRepository.updateWater(username, waterAmount)
     }
 
     // ---------------------------------------------------------------------
@@ -46,9 +39,9 @@ public class WaterService {
     //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    public CompletableFuture<JSONObject> getWater(String username) {
+    fun getWater(username: String): CompletableFuture<JSONObject?> {
         // Delegate the data operation to the repository layer.
-        return waterRepository.getWater(username);
+        return waterRepository.getWater(username)
     }
 
     // ---------------------------------------------------------------------
@@ -56,25 +49,25 @@ public class WaterService {
     //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    public CompletableFuture<Map<String, Long>> getWaterHistoryMap(String username, int days) {
+    fun getWaterHistoryMap(username: String, days: Int): CompletableFuture<Map<String, Long>?> {
         // Delegate the data operation to the repository layer.
-        return waterRepository.getWaterHistoryMap(username, days);
+        return waterRepository.getWaterHistoryMap(username, days)
     }
 
     // ---------------------------------------------------------------------
     // Returns the user's weekly water averages for the last four weeks.
     // ---------------------------------------------------------------------
-    public CompletableFuture<Map<String, Integer>> getWeeklyAverages(String username) {
+    fun getWeeklyAverages(username: String): CompletableFuture<Map<String, Int>> {
         // Delegate the data operation to the repository layer.
-        return waterRepository.getWeeklyAverages(username);
+        return waterRepository.getWeeklyAverages(username)
     }
 
     // ---------------------------------------------------------------------
     // Returns the user's current daily water goal.
     // ---------------------------------------------------------------------
-    public CompletableFuture<Integer> getGoalMl(String username) {
+    fun getGoalMl(username: String): CompletableFuture<Int> {
         // Delegate the data operation to the repository layer.
-        return waterRepository.getGoalMl(username);
+        return waterRepository.getGoalMl(username)
     }
 
     // ---------------------------------------------------------------------
@@ -86,8 +79,8 @@ public class WaterService {
     // Returns true when the update succeeded.
     // Returns false when the value is invalid or the user was not found.
     // ---------------------------------------------------------------------
-    public CompletableFuture<Boolean> updateGoalMl(String username, int goalMl) {
+    fun updateGoalMl(username: String, goalMl: Int): CompletableFuture<Boolean> {
         // Delegate the data operation to the repository layer.
-        return waterRepository.updateGoalMl(username, goalMl);
+        return waterRepository.updateGoalMl(username, goalMl)
     }
 }

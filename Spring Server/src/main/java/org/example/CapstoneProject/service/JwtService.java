@@ -71,7 +71,7 @@ public class JwtService {
         var secret = EnvConfig.getJwtSecret();
 
         // Throw an exception if the secret is missing or too short.
-        if (secret == null || secret.length() < 32) {
+        if (secret.length() < 32) {
             throw new IllegalStateException(
                     "JWT_SECRET must exist and contain at least 32 characters"
             );

@@ -4,6 +4,7 @@ import org.example.CapstoneProject.Application;
 // Import JUnit 5 test annotations
 import org.example.CapstoneProject.dto.LoginResponse;
 import org.example.CapstoneProject.dto.UserResponse;
+import org.example.CapstoneProject.service.UserService;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -17,7 +18,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 // Import Autowired to inject beans into this test class
 import org.springframework.beans.factory.annotation.Autowired;
 // Import UserService to prepare and clean up test users through the service layer
-import org.example.CapstoneProject.service.UserService;
 import org.example.CapstoneProject.service.JwtService;
 // Import the User model used in requests and responses
 import org.example.CapstoneProject.model.User;

@@ -414,7 +414,7 @@ public class UsersController {
         return waterService.getWeeklyAverages(username)
                 .thenApply(result -> {
                     // If result is null or empty, return 404 with an empty map
-                    if (result == null || result.isEmpty()) {
+                    if (result.isEmpty()) {
                         // ResponseEntity is returned asynchronously once Future is completed
                         return ResponseEntity
                                 .status(HttpStatus.NOT_FOUND)
@@ -530,6 +530,7 @@ public class UsersController {
 
     // -------------------------------- GET CALORIES ----------------------------
     // Returns JSON: {"calories": 1800}
+    @SuppressWarnings("ConstantValue")
     @GetMapping("/{username}/calories")
     public CompletableFuture<ResponseEntity<CaloriesResponse>> getCalories(
             @PathVariable("username") String username) {
