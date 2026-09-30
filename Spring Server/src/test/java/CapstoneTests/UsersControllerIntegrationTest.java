@@ -1,7 +1,7 @@
 // Define the package for this integration test class
 package CapstoneTests;
-import org.example.CapstoneProject.Application;
 // Import JUnit 5 test annotations
+import org.example.CapstoneProject.Application;
 import org.example.CapstoneProject.dto.LoginResponse;
 import org.example.CapstoneProject.dto.UserResponse;
 import org.example.CapstoneProject.model.User;
