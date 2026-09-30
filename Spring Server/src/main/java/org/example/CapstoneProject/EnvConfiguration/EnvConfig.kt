@@ -1,31 +1,36 @@
-package org.example.CapstoneProject.EnvConfiguration;
-import io.github.cdimascio.dotenv.Dotenv;
+@file:Suppress("PackageName")
+package org.example.CapstoneProject.EnvConfiguration
+import io.github.cdimascio.dotenv.Dotenv
 
 // -------------------------------------------------------------------------
 // Provides access to environment-specific values stored in the .env file.
 // -------------------------------------------------------------------------
-public class EnvConfig {
+object EnvConfig {
+
     // Loads the .env file from the project root directory.
-    private static final Dotenv dotenv = Dotenv.load();
+    private val dotenv: Dotenv = Dotenv.load()
 
     // ---------------------------------------------------------------------
     // Returns the JWT secret used to sign and verify JWT tokens.
     // ---------------------------------------------------------------------
-    public static String getJwtSecret() {
-        return dotenv.get("JWT_SECRET");
+    @JvmStatic
+    fun getJwtSecret(): String? {
+        return dotenv["JWT_SECRET"]
     }
 
     // ---------------------------------------------------------------------
     // Returns the MongoDB connection URI.
     // ---------------------------------------------------------------------
-    public static String getMongoUri() {
-        return dotenv.get("mongodb.uri");
+    @JvmStatic
+    fun getMongoUri(): String? {
+        return dotenv["mongodb.uri"]
     }
 
     // ---------------------------------------------------------------------
     // Returns the MongoDB database name.
     // ---------------------------------------------------------------------
-    public static String getMongoDatabase() {
-        return dotenv.get("mongodb.database");
+    @JvmStatic
+    fun getMongoDatabase(): String? {
+        return dotenv["mongodb.database"]
     }
 }

@@ -8,6 +8,7 @@ import org.bson.Document;
 import org.bson.types.ObjectId;
 import org.example.CapstoneProject.repository.WaterRepository;
 import org.json.JSONObject;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -116,7 +117,7 @@ public class MongoWaterRepository implements WaterRepository {
     // - the user does not exist
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> updateWater(String username, int waterAmount) {
+    public @NonNull CompletableFuture<Boolean> updateWater(@NonNull String username, int waterAmount) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Reject invalid drink amounts.
@@ -168,7 +169,7 @@ public class MongoWaterRepository implements WaterRepository {
     // Returns null when the user does not exist.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<JSONObject> getWater(String username) {
+    public @NonNull CompletableFuture<JSONObject> getWater(@NonNull String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the user.
@@ -258,7 +259,7 @@ public class MongoWaterRepository implements WaterRepository {
     // instead of returning every individual drink to Java.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Map<String, Long>> getWaterHistoryMap(String username, int days) {
+    public @NonNull CompletableFuture<Map<String, Long>> getWaterHistoryMap(@NonNull String username, int days) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the supplied username into MongoDB's ObjectId.
@@ -360,7 +361,7 @@ public class MongoWaterRepository implements WaterRepository {
     // This matches the original Firebase behavior.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Map<String, Integer>> getWeeklyAverages(String username) {
+    public @NonNull CompletableFuture<Map<String, Integer>> getWeeklyAverages(@NonNull String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the user.
@@ -484,7 +485,7 @@ public class MongoWaterRepository implements WaterRepository {
     // - the user has no stored goal
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Integer> getGoalMl(String username) {
+    public @NonNull CompletableFuture<Integer> getGoalMl(@NonNull String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the user.
@@ -553,7 +554,7 @@ public class MongoWaterRepository implements WaterRepository {
     // Returns false for invalid values or missing users.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> updateGoalMl(String username, int goalMl) {
+    public @NonNull CompletableFuture<Boolean> updateGoalMl(@NonNull String username, int goalMl) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Preserve the existing goal validation.

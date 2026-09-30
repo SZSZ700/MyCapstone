@@ -1,19 +1,16 @@
-package org.example.CapstoneProject.repository;
-
-import org.example.CapstoneProject.model.User;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+@file:Suppress("PackageName")
+package org.example.CapstoneProject.repository
+import org.example.CapstoneProject.model.User
+import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
 // Defines the operations that can be performed on user data.
 //
-// This interface does not know that Firebase exists.
-// The Firebase implementation will be created separately later.
+// This interface is independent of the database implementation.
+// The MongoDB implementation is provided separately.
 // -------------------------------------------------------------------------
-@SuppressWarnings("unused")
-public interface UserRepository {
+@Suppress("unused")
+interface UserRepository {
 
     // ---------------------------------------------------------------------
     // Finds a user by username.
@@ -21,17 +18,17 @@ public interface UserRepository {
     // Returns the user when found.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<User> findByUsername(String username);
+    fun findByUsername(username: String): CompletableFuture<User?>
 
     // ---------------------------------------------------------------------
     // Returns all users stored in the database.
     // ---------------------------------------------------------------------
-    CompletableFuture<List<User>> findAll();
+    fun findAll(): CompletableFuture<List<User>>
 
     // ---------------------------------------------------------------------
     // Checks whether a user exists by username.
     // ---------------------------------------------------------------------
-    CompletableFuture<Boolean> existsByUsername(String username);
+    fun existsByUsername(username: String): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
     // Deletes a user by username.
@@ -39,15 +36,18 @@ public interface UserRepository {
     // Returns true when the user was found and deleted.
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<Boolean> deleteByUsername(String username);
+    fun deleteByUsername(username: String): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
     // Partially updates an existing user by username.
     //
+    // MutableMap is used here to preserve the exact Java signature
+    // Map<String, Object> used by the existing repository implementation.
+    //
     // Returns the updated user when the user was found.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<User> patchByUsername(String username, Map<String, Object> updates);
+    fun patchByUsername(username: String, updates: MutableMap<String, Any>): CompletableFuture<User?>
 
     // ---------------------------------------------------------------------
     // Creates a new user.
@@ -55,7 +55,7 @@ public interface UserRepository {
     // Returns true when the user was created successfully.
     // Returns false when the username is invalid or already exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<Boolean> create(User user);
+    fun create(user: User): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
     // Updates the BMI value of a user.
@@ -63,14 +63,14 @@ public interface UserRepository {
     // Returns true when the update succeeded.
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<Boolean> updateBmi(String username, double bmi);
+    fun updateBmi(username: String, bmi: Double): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
     // Returns the calories value of a user.
     //
     // Returns zero when no value or matching user exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<Integer> getCalories(String username);
+    fun getCalories(username: String): CompletableFuture<Int>
 
     // ---------------------------------------------------------------------
     // Updates the calories value of a user.
@@ -78,12 +78,12 @@ public interface UserRepository {
     // Returns true when the update succeeded.
     // Returns false when the value is invalid or no matching user exists.
     // ---------------------------------------------------------------------
-    CompletableFuture<Boolean> updateCalories(String username, int calories);
+    fun updateCalories(username: String, calories: Int): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
     // Returns the global BMI distribution for all users.
     //
     // The result contains the number of users in each BMI category.
     // ---------------------------------------------------------------------
-    CompletableFuture<Map<String, Integer>> getBmiDistribution();
+    fun getBmiDistribution(): CompletableFuture<Map<String, Int>>
 }

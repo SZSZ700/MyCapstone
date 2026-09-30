@@ -2,6 +2,8 @@
 package CapstoneTests;
 import org.example.CapstoneProject.Application;
 // Import JUnit 5 test annotations
+import org.example.CapstoneProject.dto.LoginResponse;
+import org.example.CapstoneProject.dto.UserResponse;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -32,8 +34,7 @@ import org.springframework.http.HttpEntity;
 import java.util.concurrent.TimeUnit;
 // Import Java utilities for maps and collections
 import java.util.*;
-import org.example.CapstoneProject.dto.UserResponse;
-import org.example.CapstoneProject.dto.LoginResponse;
+
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 // UsersControllerIntegrationTest is an end-to-end integration test class that

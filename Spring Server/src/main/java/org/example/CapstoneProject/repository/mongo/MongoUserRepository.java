@@ -10,6 +10,7 @@ import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
 import org.example.CapstoneProject.model.User;
 import org.example.CapstoneProject.repository.UserRepository;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -85,7 +86,7 @@ public class MongoUserRepository implements UserRepository {
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<User> findByUsername(String username) {
+    public @NonNull CompletableFuture<User> findByUsername(@NonNull String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Find the first document whose username matches.
@@ -103,7 +104,7 @@ public class MongoUserRepository implements UserRepository {
     // db.users.find({})
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<List<User>> findAll() {
+    public @NonNull CompletableFuture<List<User>> findAll() {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Create the result list.
@@ -131,7 +132,7 @@ public class MongoUserRepository implements UserRepository {
     // Returns true when at least one matching document exists.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> existsByUsername(String username) {
+    public @NonNull CompletableFuture<Boolean> existsByUsername(@NonNull String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Count documents matching the supplied username.
@@ -192,7 +193,7 @@ public class MongoUserRepository implements UserRepository {
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> deleteByUsername(String username) {
+    public @NonNull CompletableFuture<Boolean> deleteByUsername(@NonNull String username) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Open a MongoDB client session.
@@ -243,7 +244,7 @@ public class MongoUserRepository implements UserRepository {
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<User> patchByUsername(String username, Map<String, Object> updates) {
+    public @NonNull CompletableFuture<User> patchByUsername(@NonNull String username, @NonNull Map<String, Object> updates) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Build only the update operations that were actually requested.
@@ -339,11 +340,11 @@ public class MongoUserRepository implements UserRepository {
     // duplicate signup requests.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> create(User user) {
+    public @NonNull CompletableFuture<Boolean> create(@NonNull User user) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Extract the username safely.
-            var username = user != null ? user.getUserName() : null;
+            var username = user.getUserName();
 
             // Reject invalid usernames before contacting MongoDB.
             if (username == null || username.isBlank()) { return false; }
@@ -384,7 +385,7 @@ public class MongoUserRepository implements UserRepository {
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> updateBmi(String username, double bmi) {
+    public @NonNull CompletableFuture<Boolean> updateBmi(@NonNull String username, double bmi) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Update only the bmi field.
@@ -412,7 +413,7 @@ public class MongoUserRepository implements UserRepository {
     // - no calories document exists for today
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Integer> getCalories(String username) {
+    public @NonNull CompletableFuture<Integer> getCalories(@NonNull String username) {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Resolve the username into the user's ObjectId.
@@ -485,7 +486,7 @@ public class MongoUserRepository implements UserRepository {
     // Returns false for invalid values or missing users.
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Boolean> updateCalories(String username, int caloriesValue) {
+    public @NonNull CompletableFuture<Boolean> updateCalories(@NonNull String username, int caloriesValue) {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Preserve the existing calorie validation.
@@ -537,7 +538,7 @@ public class MongoUserRepository implements UserRepository {
     // - Obese
     // ---------------------------------------------------------------------
     @Override
-    public CompletableFuture<Map<String, Integer>> getBmiDistribution() {
+    public @NonNull CompletableFuture<Map<String, Integer>> getBmiDistribution() {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync(() -> {
             // Initialize all counters.

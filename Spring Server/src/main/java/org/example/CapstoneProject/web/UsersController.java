@@ -1,13 +1,7 @@
 // Define the package where this controller belongs
 package org.example.CapstoneProject.web;
 // Import the User model (POJO with username, password, age, fullName)
-import org.example.CapstoneProject.dto.LoginRequest;
-import org.example.CapstoneProject.dto.SignupRequest;
-import org.example.CapstoneProject.dto.UserResponse;
-import org.example.CapstoneProject.dto.WaterResponse;
-import org.example.CapstoneProject.dto.GoalResponse;
-import org.example.CapstoneProject.dto.CaloriesResponse;
-import org.example.CapstoneProject.dto.GoalUpdateResponse;
+import org.example.CapstoneProject.dto.*;
 import org.example.CapstoneProject.model.User;
 // Import the Firebase service that handles database operations
 import org.example.CapstoneProject.service.*;
@@ -20,7 +14,6 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;   // For async non-blocking calls
 import java.util.stream.Collectors;
 import jakarta.validation.Valid;
-import org.example.CapstoneProject.dto.LoginResponse;
 
 
 // NOTE:
