@@ -1,29 +1,24 @@
-package org.example.CapstoneProject.repository.mongo;
-import com.mongodb.MongoWriteException;
-import com.mongodb.client.ClientSession;
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
-import com.mongodb.client.model.UpdateOptions;
-import org.bson.Document;
-import org.bson.conversions.Bson;
-import org.bson.types.ObjectId;
-import org.example.CapstoneProject.model.User;
-import org.example.CapstoneProject.repository.UserRepository;
-import org.jetbrains.annotations.NotNull;
-import org.jspecify.annotations.NonNull;
-import org.springframework.stereotype.Repository;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-
-import static com.mongodb.client.model.Filters.and;
-import static com.mongodb.client.model.Filters.eq;
-import static com.mongodb.client.model.Updates.*;
+@file:Suppress("PackageName", "IfThenToElvis")
+package org.example.CapstoneProject.repository.mongo
+import com.mongodb.MongoWriteException
+import com.mongodb.client.ClientSession
+import com.mongodb.client.MongoClient
+import com.mongodb.client.MongoCollection
+import com.mongodb.client.MongoDatabase
+import com.mongodb.client.model.UpdateOptions
+import org.bson.Document
+import org.bson.conversions.Bson
+import org.bson.types.ObjectId
+import org.example.CapstoneProject.model.User
+import org.example.CapstoneProject.repository.UserRepository
+import org.springframework.stereotype.Repository
+import java.time.LocalDate
+import java.util.concurrent.CompletableFuture
+import com.mongodb.client.model.Filters.and
+import com.mongodb.client.model.Filters.eq
+import com.mongodb.client.model.Updates.combine
+import com.mongodb.client.model.Updates.inc
+import com.mongodb.client.model.Updates.set
 
 // -------------------------------------------------------------------------
 // Low-level MongoDB implementation of UserRepository.
@@ -45,35 +40,26 @@ import static com.mongodb.client.model.Updates.*;
 //
 // The service layer continues to depend only on UserRepository.
 // -------------------------------------------------------------------------
-@SuppressWarnings({"unused", "FieldCanBeLocal"})
+@Suppress("unused")
 @Repository
-public class MongoUserRepository implements UserRepository {
+class MongoUserRepository(
+    database: MongoDatabase,
+
+    // MongoClient is used to create sessions for MongoDB transactions.
+    private val mongoClient: MongoClient
+) : UserRepository {
 
     // Hold the users collection.
-    private final MongoCollection<Document> users;
+    private val users: MongoCollection<Document> = database.getCollection("users")
 
     // Hold the calories collection.
-    private final MongoCollection<Document> calories;
+    private val calories: MongoCollection<Document> = database.getCollection("calories")
 
     // Hold the goals collection.
-    private final MongoCollection<Document> goals;
+    private val goals: MongoCollection<Document> = database.getCollection("goals")
 
     // Hold the water records collection.
-    private final MongoCollection<Document> waterRecords;
-
-    private final MongoClient mongoClient;
-    // ---------------------------------------------------------------------
-    // Builds the repository using the raw MongoDatabase object.
-    //
-    // Each collection is retrieved directly from MongoDB.
-    // ---------------------------------------------------------------------
-    public MongoUserRepository(MongoDatabase database, MongoClient mongoClient) {
-        this.mongoClient = mongoClient;
-        this.users = database.getCollection("users");
-        this.calories = database.getCollection("calories");
-        this.goals = database.getCollection("goals");
-        this.waterRecords = database.getCollection("water_records");
-    }
+    private val waterRecords: MongoCollection<Document> = database.getCollection("water_records")
 
     // ---------------------------------------------------------------------
     // Finds a user by username.
@@ -86,39 +72,41 @@ public class MongoUserRepository implements UserRepository {
     // Returns the matching user.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<User> findByUsername(@NonNull String username) {
+    override fun findByUsername(username: String): CompletableFuture<User?> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync<User?> {
             // Find the first document whose username matches.
-            Document document = users.find(eq("username", username)).first();
+            val document = users.find(
+                eq("username", username)
+            ).first()
+
             // Return null when no document was found.
-            if (document == null) { return null; }
+            if (document == null) { null }
             // Convert the MongoDB document into the existing User model.
-            return mapUser(document);
-        });
+            else { mapUser(document) }
+        }
     }
 
     // ---------------------------------------------------------------------
     // Returns all users stored in MongoDB.
+    //
     // Mongo raw:
     // db.users.find({})
     // ---------------------------------------------------------------------
-    @Override
-    public @NotNull CompletableFuture<List<User>> findAll() {
+    override fun findAll(): CompletableFuture<List<User>> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Create the result list.
-            var result = new ArrayList<User>();
+            val result = ArrayList<User>()
 
             // MongoDB returns every document in the users collection.
-            for (Document document : users.find()) {
+            for (document in users.find()) {
                 // Convert each document into a User object.
-                result.add(mapUser(document));
+                result.add(mapUser(document))
             }
 
-            return result;
-        });
+            result
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -132,18 +120,17 @@ public class MongoUserRepository implements UserRepository {
     //
     // Returns true when at least one matching document exists.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Boolean> existsByUsername(@NonNull String username) {
+    override fun existsByUsername(username: String): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Count documents matching the supplied username.
-            long count = users.countDocuments(
-                    eq("username", username)
-            );
+            val count = users.countDocuments(
+                eq("username", username)
+            )
 
             // A count greater than zero means the user exists.
-            return count > 0;
-        });
+            count > 0
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -193,83 +180,98 @@ public class MongoUserRepository implements UserRepository {
     // Returns true when the user and all related data were deleted.
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Boolean> deleteByUsername(@NonNull String username) {
+    override fun deleteByUsername(username: String): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operations asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Open a MongoDB client session.
-            try (ClientSession session = mongoClient.startSession()) {
+            val session = mongoClient.startSession()
+
+            session.use { session ->
                 // Execute the complete delete operation inside one transaction.
-                return session.withTransaction(() -> {
+                session.withTransaction {
                     // Find and lock the user document by incrementing
                     // transactionVersion inside the current transaction.
-                    ObjectId userId = lockAndFindUserId(session, username);
+                    val userId = lockAndFindUserId(session, username)
+
                     // The user does not exist.
-                    if (userId == null) { return false; }
+                    if (userId == null) { false }
+                    else {
+                        // Delete all calorie records belonging to the user.
+                        calories.deleteMany(session,
+                            eq("userId", userId))
 
-                    // Delete all calorie records belonging to the user.
-                    calories.deleteMany(session, eq("userId", userId));
-                    // Delete all goal records belonging to the user.
-                    goals.deleteMany(session, eq("userId", userId));
-                    // Delete all water records belonging to the user.
-                    waterRecords.deleteMany(session, eq("userId", userId));
-                    // Delete the user document itself.
-                    var result = users.deleteOne(session, eq("_id", userId));
+                        // Delete all goal records belonging to the user.
+                        goals.deleteMany(session,
+                            eq("userId", userId))
 
-                    // If the user document was not deleted,
-                    // abort the transaction so previous deletions are rolled back.
-                    if (result.getDeletedCount() == 0) {
-                        session.abortTransaction();
-                        return false;
+                        // Delete all water records belonging to the user.
+                        waterRecords.deleteMany(session,
+                            eq("userId", userId))
+
+                        // Delete the user document itself.
+                        val result = users.deleteOne(session,
+                            eq("_id", userId)
+                        )
+
+                        // If the user document was not deleted,
+                        // abort the transaction so previous deletions are rolled back.
+                        if (result.deletedCount == 0L) {
+                            session.abortTransaction()
+                            false
+                        }
+                        // Returning true allows withTransaction()
+                        // to commit the complete transaction.
+                        else { true }
                     }
-
-                    // Returning true allows withTransaction()
-                    // to commit the complete transaction.
-                    return true;
-                });
+                }
             }
-        });
+        }
     }
 
     // ---------------------------------------------------------------------
     // Partially updates an existing user.
+    //
     // PATCH is dynamic, so the update fields depend on what the client sent.
     // Username changes are intentionally ignored.
     //
     // Example Mongo raw:
+    //
     // db.users.updateOne(
-    //     {username: username},
-    //     {$set: {fullName: "New Name",age: 30}}
+    //     { username: username },
+    //     { $set: { fullName: "New Name", age: 30 } }
     // )
+    //
     // Returns the updated user.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<User> patchByUsername(@NonNull String username, @NonNull Map<String, Object> updates) {
+    override fun patchByUsername(username: String, updates: MutableMap<String, Any>
+    ): CompletableFuture<User?> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync<User?> {
             // Build only the update operations that were actually requested.
-            var mongoUpdates = new ArrayList<Bson>();
+            val mongoUpdates = ArrayList<Bson>()
 
             // Convert the API field "password"
             // into the MongoDB field "passwordHash".
             if (updates.containsKey("password")) {
-                mongoUpdates.add(set("passwordHash", updates.get("password")));
+                mongoUpdates.add(set("passwordHash", updates["password"]))
             }
 
             // Add fullName when supplied.
             if (updates.containsKey("fullName")) {
-                mongoUpdates.add(set("fullName", updates.get("fullName")));
+                mongoUpdates.add(set("fullName", updates["fullName"]))
             }
 
             // Add age when supplied.
             if (updates.containsKey("age")) {
-                mongoUpdates.add(set("age", ((Number) updates.get("age")).intValue()));
+                val age = updates["age"] as Number
+                mongoUpdates.add(set("age", age.toInt()))
             }
 
             // Add BMI when supplied.
             if (updates.containsKey("bmi")) {
-                mongoUpdates.add(set("bmi", ((Number) updates.get("bmi")).doubleValue()));
+                val bmi = updates["bmi"] as Number
+                mongoUpdates.add(set("bmi", bmi.toDouble()))
             }
 
             // Username is never added to mongoUpdates,
@@ -282,46 +284,44 @@ public class MongoUserRepository implements UserRepository {
                 // db.users.findOne({
                 //     username: username
                 // })
-                Document currentDocument = users.find(
-                        eq("username", username)).first();
 
-                if (currentDocument == null) { return null; }
+                val currentDocument = users.find(
+                    eq("username", username)
+                ).first()
 
-                return mapUser(currentDocument);
-            }
+                if (currentDocument == null) { null }
+                else { mapUser(currentDocument) }
+            } else {
+                // Mongo raw:
+                // db.users.updateOne(
+                //     { username: username },
+                //     { $set: { dynamic fields here } }
+                // )
 
-            // Mongo raw:
-            // db.users.updateOne(
-            //     { username: username },
-            //     { $set: { dynamic fields here } }
-            // )
-            var result = users.updateOne(
+                val result = users.updateOne(
                     eq("username", username),
                     combine(mongoUpdates)
-            );
+                )
 
-            // No matching user exists.
-            if (result.getMatchedCount() == 0) { return null; }
+                // No matching user exists.
+                if (result.matchedCount == 0L) { null }
+                else {
+                    // Read the updated document again.
+                    val updatedDocument = users
+                        .find(eq("username", username))
+                        .first()
 
-            // Read the updated document again.
-            Document updatedDocument = users
-                    .find(eq("username", username))
-                    .first();
-
-            if (updatedDocument == null) { return null; }
-
-            return mapUser(updatedDocument);
-        });
+                    if (updatedDocument == null) { null }
+                    else { mapUser(updatedDocument) }
+                }
+            }
+        }
     }
 
     // ---------------------------------------------------------------------
     // Creates a new user.
     //
     // Mongo raw:
-    //
-    // db.users.countDocuments({
-    //     username: username
-    // })
     //
     // db.users.insertOne({
     //     username: userName,
@@ -333,37 +333,37 @@ public class MongoUserRepository implements UserRepository {
     // })
     //
     // Returns false when:
-    // - user is null
     // - username is null
     // - username is blank
     // - username already exists
+    //
     // A UNIQUE index on username still protects against concurrent
     // duplicate signup requests.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Boolean> create(@NonNull User user) {
+    override fun create(user: User): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Extract the username safely.
-            var username = user.getUserName();
+            val username = user.userName
 
             // Reject invalid usernames before contacting MongoDB.
-            if (username == null || username.isBlank()) { return false; }
-
-            try {
-                // Insert the new user document.
-                users.insertOne(userToDocument(user));
-                return true;
-            } catch (MongoWriteException e) {
-                // Duplicate key error caused by the UNIQUE username index.
-                // This protects against a race condition where two signup
-                // requests pass the existence check at nearly the same time.
-                if (e.getError().getCode() == 11000) { return false; }
-
-                // Re-throw every other MongoDB write error.
-                throw e;
+            if (username.isNullOrBlank()) {
+                false
+            } else {
+                try {
+                    // Insert the new user document.
+                    users.insertOne(userToDocument(user))
+                    true
+                }
+                catch (e: MongoWriteException) {
+                    // Duplicate key error caused by the UNIQUE username index.
+                    // This protects against concurrent duplicate signup requests.
+                    if (e.error.code == 11000) { false }
+                    // Re-throw every other MongoDB write error.
+                    else { throw e }
+                }
             }
-        });
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -385,18 +385,18 @@ public class MongoUserRepository implements UserRepository {
     // Returns true when the user exists.
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Boolean> updateBmi(@NonNull String username, double bmi) {
+    override fun updateBmi(username: String, bmi: Double): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Update only the bmi field.
-            var result = users.updateOne(eq("username", username),
-                    set("bmi", bmi)
-            );
+            val result = users.updateOne(
+                eq("username", username),
+                set("bmi", bmi)
+            )
 
             // matchedCount tells us whether MongoDB found the user.
-            return result.getMatchedCount() > 0;
-        });
+            result.matchedCount > 0
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -413,33 +413,35 @@ public class MongoUserRepository implements UserRepository {
     // - the user does not exist
     // - no calories document exists for today
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Integer> getCalories(@NonNull String username) {
+    override fun getCalories(username: String): CompletableFuture<Int> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Resolve the username into the user's ObjectId.
-            ObjectId userId = findUserId(username);
+            val userId = findUserId(username)
 
             // Missing user behaves like the original implementation.
-            if (userId == null) { return 0; }
+            if (userId == null) { 0 }
+            else {
+                // LocalDate.toString() produces yyyy-MM-dd.
+                val today = LocalDate.now().toString()
 
-            // LocalDate.toString() produces yyyy-MM-dd.
-            var today = LocalDate.now().toString();
-
-            // Find today's calories document.
-            Document document = calories.find(
+                // Find today's calories document.
+                val document = calories.find(
                     and(
-                            eq("userId", userId),
-                            eq("recordDate", today)
+                        eq("userId", userId),
+                        eq("recordDate", today)
                     )
-            ).first();
+                ).first()
 
-            // No calories entry exists for today.
-            if (document == null) { return 0; }
-
-            // Return the stored calories value.
-            return document.getInteger("calories", 0);
-        });
+                // No calories entry exists for today.
+                if (document == null) {
+                    0
+                } else {
+                    // Return the stored calories value.
+                    document.getInteger("calories", 0)
+                }
+            }
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -486,41 +488,48 @@ public class MongoUserRepository implements UserRepository {
     //
     // Returns false for invalid values or missing users.
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Boolean> updateCalories(@NonNull String username, int caloriesValue) {
+    override fun updateCalories(username: String, calories: Int): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operations asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Preserve the existing calorie validation.
-            if (caloriesValue < 0 || caloriesValue > 20000) { return false; }
-            // Open a MongoDB client session.
-            try (ClientSession session = mongoClient.startSession()) {
-                // Execute the complete operation inside one transaction.
-                return session.withTransaction(() -> {
-                    // Find and lock the user inside the current transaction.
-                    ObjectId userId = lockAndFindUserId(session, username);
-                    // The user does not exist.
-                    if (userId == null) { return false; }
+            if (calories !in 0..20000) { false }
+            else {
+                // Open a MongoDB client session.
+                val session = mongoClient.startSession()
 
-                    // Build today's yyyy-MM-dd key.
-                    var today = LocalDate.now().toString();
+                session.use { session ->
+                    // Execute the complete operation inside one transaction.
+                    session.withTransaction {
+                        // Find and lock the user inside the current transaction.
+                        val userId = lockAndFindUserId(session, username)
 
-                    // Update today's calories document.
-                    // If it does not exist, MongoDB creates it automatically.
-                    calories.updateOne(session,
-                            and(
+                        // The user does not exist.
+                        if (userId == null) {
+                            false
+                        } else {
+                            // Build today's yyyy-MM-dd key.
+                            val today = LocalDate.now().toString()
+
+                            // Update today's calories document.
+                            // If it does not exist, MongoDB creates it automatically.
+                            this@MongoUserRepository.calories.updateOne(
+                                session,
+                                and(
                                     eq("userId", userId),
                                     eq("recordDate", today)
-                            ),
-                            set("calories", caloriesValue),
-                            new UpdateOptions().upsert(true)
-                    );
+                                ),
+                                set("calories", calories),
+                                UpdateOptions().upsert(true)
+                            )
 
-                    // Returning true allows withTransaction()
-                    // to commit the transaction.
-                    return true;
-                });
+                            // Returning true allows withTransaction()
+                            // to commit the transaction.
+                            true
+                        }
+                    }
+                }
             }
-        });
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -532,48 +541,47 @@ public class MongoUserRepository implements UserRepository {
     //
     // MongoDB only retrieves the stored BMI values.
     //
-    // The BMI category business logic remains in Java:
+    // The BMI category business logic remains in Kotlin:
     // - Underweight
     // - Normal
     // - Overweight
     // - Obese
     // ---------------------------------------------------------------------
-    @Override
-    public @NonNull CompletableFuture<Map<String, Integer>> getBmiDistribution() {
+    override fun getBmiDistribution(): CompletableFuture<Map<String, Int>> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync(() -> {
+        return CompletableFuture.supplyAsync {
             // Initialize all counters.
-            var underweight = 0;
-            var normal = 0;
-            var overweight = 0;
-            var obese = 0;
+            var underweight = 0
+            var normal = 0
+            var overweight = 0
+            var obese = 0
 
             // Read all users.
-            for (Document document : users.find()) {
+            for (document in users.find()) {
                 // Read the BMI as Number because BSON numeric values
-                // may be represented by different Java numeric types.
-                Number bmiNumber = document.get("bmi", Number.class);
-                // Ignore users without a BMI value.
-                if (bmiNumber == null) { continue; }
-                // Convert to primitive double for comparison.
-                var bmi = bmiNumber.doubleValue();
+                // may be represented by different JVM numeric types.
+                val bmiNumber = document.get("bmi", Number::class.java) ?: continue
+
+                // Convert to Double for comparison.
+                val bmi = bmiNumber.toDouble()
 
                 // Apply the same BMI classification used before.
-                if (bmi < 18.5) { underweight++; }
-                else if (bmi >= 18.5 && bmi < 25.0) { normal++; }
-                else if (bmi >= 25.0 && bmi < 30.0) { overweight++; }
-                else if (bmi >= 30.0) { obese++; }
+                if (bmi < 18.5) { underweight++ }
+                else if (bmi in 18.5..<25.0) { normal++ }
+                else if (bmi in 25.0..<30.0) { overweight++ }
+                else if (bmi >= 30.0) { obese++ }
             }
 
             // LinkedHashMap preserves the desired output order.
-            var distribution = new LinkedHashMap<String, Integer>();
-            distribution.put("Underweight", underweight);
-            distribution.put("Normal", normal);
-            distribution.put("Overweight", overweight);
-            distribution.put("Obese", obese);
+            val distribution = LinkedHashMap<String, Int>()
+            distribution["Underweight"] = underweight
+            distribution["Normal"] = normal
+            distribution["Overweight"] = overweight
+            distribution["Obese"] = obese
 
-            return distribution;
-        });
+            // return the distribution map
+            distribution
+        }
     }
 
     // ---------------------------------------------------------------------
@@ -587,12 +595,16 @@ public class MongoUserRepository implements UserRepository {
     //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    private ObjectId findUserId(String username) {
+    private fun findUserId(username: String): ObjectId? {
         // Find the matching user document.
-        Document document = users.find(eq("username", username)).first();
-        if (document == null) { return null; }
+        val document = users.find(
+            eq("username", username)
+        ).first()
+
+        if (document == null) { return null }
+
         // Return MongoDB's _id value.
-        return document.getObjectId("_id");
+        return document.getObjectId("_id")
     }
 
     // ---------------------------------------------------------------------
@@ -627,21 +639,20 @@ public class MongoUserRepository implements UserRepository {
     // Returns the user's ObjectId.
     // Returns null when the user does not exist.
     // ---------------------------------------------------------------------
-    private ObjectId lockAndFindUserId(ClientSession session, String username) {
-
+    private fun lockAndFindUserId(session: ClientSession, username: String): ObjectId? {
         // Find the user and increment transactionVersion
         // inside the current transaction.
-        Document document = users.findOneAndUpdate(
-                session,
-                eq("username", username),
-                inc("transactionVersion", 1)
-        );
+        val document = users.findOneAndUpdate(
+            session,
+            eq("username", username),
+            inc("transactionVersion", 1)
+        )
 
         // The user does not exist.
-        if (document == null) { return null; }
+        if (document == null) { return null }
 
         // Return MongoDB's _id value.
-        return document.getObjectId("_id");
+        return document.getObjectId("_id")
     }
 
     // ---------------------------------------------------------------------
@@ -654,21 +665,24 @@ public class MongoUserRepository implements UserRepository {
     // age
     // bmi
     // ---------------------------------------------------------------------
-    private User mapUser(Document document) {
+    private fun mapUser(document: Document): User {
         // Create an empty User object.
-        var user = new User();
-        // Copy String fields.
-        user.setUserName(document.getString("username"));
-        user.setPassword(document.getString("passwordHash"));
-        user.setFullName(document.getString("fullName"));
-        // Read numeric fields safely.
-        Number age = document.get("age", Number.class);
-        Number bmi = document.get("bmi", Number.class);
-        // Use safe defaults when a value is missing.
-        user.setAge(age == null ? 0 : age.intValue());
-        user.setBmi(bmi == null ? 0.0 : bmi.doubleValue());
+        val user = User()
 
-        return user;
+        // Copy String fields.
+        user.userName = document.getString("username")
+        user.password = document.getString("passwordHash")
+        user.fullName = document.getString("fullName")
+
+        // Read numeric fields safely.
+        val age = document.get("age", Number::class.java)
+        val bmi = document.get("bmi", Number::class.java)
+
+        // Use safe defaults when a value is missing.
+        user.age = if (age == null) 0 else age.toInt()
+        user.bmi = if (bmi == null) 0.0 else bmi.toDouble()
+
+        return user
     }
 
     // ---------------------------------------------------------------------
@@ -681,15 +695,16 @@ public class MongoUserRepository implements UserRepository {
     //     passwordHash: "...",
     //     fullName: "...",
     //     age: 25,
-    //     bmi: 22.5
+    //     bmi: 22.5,
+    //     transactionVersion: 0
     // }
     // ---------------------------------------------------------------------
-    private Document userToDocument(User user) {
-        return new Document("username", user.getUserName())
-                .append("passwordHash", user.getPassword())
-                .append("fullName", user.getFullName())
-                .append("age", user.getAge())
-                .append("bmi", user.getBmi())
-                .append("transactionVersion", 0);
+    private fun userToDocument(user: User): Document {
+        return Document("username", user.userName)
+            .append("passwordHash", user.password)
+            .append("fullName", user.fullName)
+            .append("age", user.age)
+            .append("bmi", user.bmi)
+            .append("transactionVersion", 0)
     }
 }
