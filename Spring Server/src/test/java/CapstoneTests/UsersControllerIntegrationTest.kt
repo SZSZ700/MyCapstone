@@ -326,16 +326,12 @@ class CapstoneServicesIntegrationTest {
 
         // Create the signup User object.
         val signupUser = User()
-
         // Assign the unique username.
         signupUser.userName = uniqueUsername
-
         // Assign the raw password.
         signupUser.password = rawPassword
-
         // Assign a full name.
         signupUser.fullName = "Sasa li"
-
         // Assign an age.
         signupUser.age = 25
 
@@ -359,15 +355,11 @@ class CapstoneServicesIntegrationTest {
         assertNotNull(storedUser)
 
         // Verify that the raw password was not stored directly.
-        assertNotEquals(
-            rawPassword,
-            storedUser!!.password
-        )
+        assertNotEquals(rawPassword, storedUser!!.password)
 
         // Verify that the stored BCrypt hash matches the original password.
         assertTrue(
-            passwordEncoder.matches(
-                rawPassword,
+            passwordEncoder.matches(rawPassword,
                 storedUser.password
             )
         )
