@@ -143,7 +143,6 @@ class CapstoneServicesIntegrationTest {
     // be BCrypt-encoded twice.
     // ---------------------------------------------------------------------
     private fun createUserOrFail(user: User) {
-
         // Start the asynchronous user creation operation.
         val future = userService.createUser(user)
 
@@ -164,7 +163,6 @@ class CapstoneServicesIntegrationTest {
     // Returns the MongoDB users collection.
     // ---------------------------------------------------------------------
     private fun usersCollection(): MongoCollection<Document> {
-
         // Return direct access to the users collection.
         return mongoDatabase.getCollection("users")
     }
@@ -173,7 +171,6 @@ class CapstoneServicesIntegrationTest {
     // Returns the MongoDB water_records collection.
     // ---------------------------------------------------------------------
     private fun waterRecordsCollection(): MongoCollection<Document> {
-
         // Return direct access to the water_records collection.
         return mongoDatabase.getCollection("water_records")
     }
@@ -182,7 +179,6 @@ class CapstoneServicesIntegrationTest {
     // Returns the MongoDB calories collection.
     // ---------------------------------------------------------------------
     private fun caloriesCollection(): MongoCollection<Document> {
-
         // Return direct access to the calories collection.
         return mongoDatabase.getCollection("calories")
     }
@@ -191,7 +187,6 @@ class CapstoneServicesIntegrationTest {
     // Returns the MongoDB goals collection.
     // ---------------------------------------------------------------------
     private fun goalsCollection(): MongoCollection<Document> {
-
         // Return direct access to the goals collection.
         return mongoDatabase.getCollection("goals")
     }
@@ -202,7 +197,6 @@ class CapstoneServicesIntegrationTest {
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     private fun getUserIdFromMongo(username: String): ObjectId? {
-
         // Find the user document whose username matches the supplied value.
         val document = usersCollection().find(
             eq("username", username)
@@ -228,7 +222,6 @@ class CapstoneServicesIntegrationTest {
     // Returns -1 when the user does not exist.
     // ---------------------------------------------------------------------
     private fun getTransactionVersion(username: String): Long {
-
         // Find the requested user document.
         val document = usersCollection().find(
             eq("username", username)
@@ -249,37 +242,30 @@ class CapstoneServicesIntegrationTest {
     // Run once before the test methods in this class.
     @BeforeAll
     fun setUpTestUsers() {
-
         // Generate one unique suffix for this test execution.
         val runId = System.currentTimeMillis().toString()
 
         // Build the first unique shared username.
         testUserName1 = "integrationUser1_$runId"
-
         // Build the second unique shared username.
         testUserName2 = "integrationUser2_$runId"
 
         // Create the first baseline User object.
         testUser1 = User()
-
         // Assign the first baseline username.
         testUser1.userName = testUserName1
-
         // Assign the first user's raw password.
         testUser1.password = "pass1"
 
         // Create the second baseline User object.
         testUser2 = User()
-
         // Assign the second baseline username.
         testUser2.userName = testUserName2
-
         // Assign the second user's raw password.
         testUser2.password = "pass2"
 
         // Persist the first baseline user.
         createUserOrFail(testUser1)
-
         // Persist the second baseline user.
         createUserOrFail(testUser2)
     }
@@ -287,10 +273,8 @@ class CapstoneServicesIntegrationTest {
     // Run once after all tests in this class finish.
     @AfterAll
     fun cleanUpTestUsers() {
-
         // Iterate over a snapshot so cleanup is safe while using a synchronized set.
         for (username in ArrayList(createdUsernames)) {
-
             try {
                 // Attempt to delete every user created by the test suite.
                 userService.deleteUser(username).get(20, TimeUnit.SECONDS)
@@ -316,7 +300,6 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun signup_createsNewUserAndRejectsDuplicate() {
-
         // Create a unique username for this signup test.
         val uniqueUsername =
             "signupUser_${System.currentTimeMillis()}"
@@ -387,26 +370,21 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun signup_concurrentDuplicateRequests_onlyOneUserIsCreated() {
-
         // Create one username that both concurrent requests will use.
         val username =
             "concurrentSignup_${System.currentTimeMillis()}"
 
         // Create the first competing user object.
         val userA = User()
-
         // Give the first user the shared username.
         userA.userName = username
-
         // Give the first user its raw password.
         userA.password = "passA"
 
         // Create the second competing user object.
         val userB = User()
-
         // Give the second user the same username.
         userB.userName = username
-
         // Give the second user a different raw password.
         userB.password = "passB"
 
