@@ -36,7 +36,6 @@ public class MainActivity extends AppCompatActivity {
 
         // Initialize the image button (find it by its ID from XML)
         signupPage = findViewById(R.id.imageButton2);
-
         // Set an onClickListener on the button
         signupPage.setOnClickListener(view -> {
             // When clicked, create an Intent to open LoginActivity
