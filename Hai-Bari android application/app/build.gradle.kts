@@ -43,6 +43,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.core.ktx)
     // Application dependencies
     implementation(libs.mpandroidchart)
     implementation(libs.appcompat)
