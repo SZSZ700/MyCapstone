@@ -422,7 +422,7 @@ class CapstoneServicesIntegrationTest {
         val start = CountDownLatch(1)
 
         // Create the first asynchronous signup attempt.
-        val requestA = CompletableFuture.supplyAsync<String> {
+        val requestA = CompletableFuture.supplyAsync {
 
             try {
                 // Wait until both concurrent tasks are ready.
@@ -440,7 +440,7 @@ class CapstoneServicesIntegrationTest {
         }
 
         // Create the second asynchronous signup attempt.
-        val requestB = CompletableFuture.supplyAsync<String> {
+        val requestB = CompletableFuture.supplyAsync {
 
             try {
                 // Wait until both concurrent tasks are ready.
