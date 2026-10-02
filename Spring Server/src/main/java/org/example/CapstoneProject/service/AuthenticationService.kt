@@ -77,19 +77,19 @@ class AuthenticationService(
     fun login(username: String, password: String): CompletableFuture<User?> {
         // Find the single user matching the supplied username.
         return userRepository.findByUsername(username).thenApply { existingUser ->
-            if (existingUser == null) {
-                null
-            } else {
+            if (existingUser == null) { null }
+            else {
                 val storedPassword = existingUser.password
 
                 // Verify that a stored password exists and matches
                 // the raw password received from the client.
-                if (storedPassword == null || !passwordEncoder.matches(password, storedPassword)) {
+                if (storedPassword == null ||
+                    !passwordEncoder.matches(
+                        password, storedPassword)) {
                     null
-                } else {
-                    // Credentials are valid.
-                    existingUser
                 }
+                // Credentials are valid.
+                else { existingUser }
             }
         }
     }

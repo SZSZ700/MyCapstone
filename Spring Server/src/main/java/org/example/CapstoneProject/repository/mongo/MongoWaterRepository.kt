@@ -385,7 +385,7 @@ class MongoWaterRepository(
     // ---------------------------------------------------------------------
     override fun getWeeklyAverages(username: String): CompletableFuture<Map<String, Int>> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync<Map<String, Int>> {
+        return CompletableFuture.supplyAsync {
             // Resolve the user.
             val userId = findUserId(username)
 
