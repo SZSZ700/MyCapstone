@@ -1,4 +1,5 @@
 package com.example.myfinaltopapplication
+
 // Android imports.
 import android.app.Application
 import android.os.Looper
@@ -24,6 +25,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowToast
 // Mockito.
 import org.mockito.Mockito
+// Mockito Kotlin matchers.
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 // Java concurrency.
 import java.util.concurrent.CompletableFuture
 // MPAndroidChart imports for checking PieChart state.
@@ -42,7 +46,7 @@ import com.github.mikephil.charting.data.PieDataSet
 //   5) BMI distribution PieChart data rendering
 //   6) Back button navigation to HomePage
 // -----------------------------------------------------------------------------
-@Suppress("SpellCheckingInspection", "UnusedVariable")
+@Suppress("UnusedVariable")
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BMIActivityTest {
@@ -76,7 +80,8 @@ class BMIActivityTest {
 
         restClientMock.use { _ ->
             // Get application instance.
-            @Suppress("unused") val app = RuntimeEnvironment.getApplication()
+            @Suppress("unused")
+            val app = RuntimeEnvironment.getApplication()
 
             // Build BMIActivity.
             val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
@@ -130,17 +135,24 @@ class BMIActivityTest {
             // Stub getBmi("john") -> 24.5.
             val bmiFuture: CompletableFuture<Double?> = CompletableFuture.completedFuture(24.5)
             // Return fake BMI future.
-            restClientMock.`when`<CompletableFuture<Double?>> { RestClient.getBmi("john") }.thenReturn(bmiFuture)
+            restClientMock.`when`<CompletableFuture<Double?>> {
+                RestClient.getBmi("john")
+            }.thenReturn(bmiFuture)
 
             // Stub getCalories("john") -> 1500.
             val caloriesFuture: CompletableFuture<Int?> = CompletableFuture.completedFuture(1500)
             // Return fake calories future.
-            restClientMock.`when`<CompletableFuture<Int?>> { RestClient.getCalories("john") }.thenReturn(caloriesFuture)
+            restClientMock.`when`<CompletableFuture<Int?>> {
+                RestClient.getCalories("john")
+            }.thenReturn(caloriesFuture)
 
             // Stub getBmiDistribution() with empty JSON to simplify.
-            val distFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val distFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
             // Return fake BMI distribution.
-            restClientMock.`when`<CompletableFuture<JSONObject?>> { RestClient.getBmiDistribution() }.thenReturn(distFuture)
+            restClientMock.`when`<CompletableFuture<JSONObject?>> {
+                RestClient.getBmiDistribution()
+            }.thenReturn(distFuture)
 
             // Build BMIActivity.
             val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
@@ -162,7 +174,10 @@ class BMIActivityTest {
             assertTrue(statusText.contains("Today calories: 1500 kcal"))
 
             // Check SharedPreferences stored values.
-            val prefs = app.getSharedPreferences(app.getString(R.string.myprefs), Application.MODE_PRIVATE)
+            val prefs = app.getSharedPreferences(
+                app.getString(R.string.myprefs),
+                Application.MODE_PRIVATE
+            )
 
             // Get stored BMI.
             val lastBmi = prefs.getFloat("lastBmi", -1f)
@@ -200,21 +215,28 @@ class BMIActivityTest {
             // Stub getBmi("john") -> null (no previous BMI).
             val bmiFuture: CompletableFuture<Double?> = CompletableFuture.completedFuture(null)
             // Return fake BMI future.
-            restClientMock.`when`<CompletableFuture<Double?>> { RestClient.getBmi("john") }.thenReturn(bmiFuture)
+            restClientMock.`when`<CompletableFuture<Double?>> {
+                RestClient.getBmi("john")
+            }.thenReturn(bmiFuture)
 
             // Stub getCalories("john") -> 0.
             val caloriesFuture: CompletableFuture<Int?> = CompletableFuture.completedFuture(0)
             // Return fake calories future.
-            restClientMock.`when`<CompletableFuture<Int?>> { RestClient.getCalories("john") }.thenReturn(caloriesFuture)
+            restClientMock.`when`<CompletableFuture<Int?>> {
+                RestClient.getCalories("john")
+            }.thenReturn(caloriesFuture)
 
             // Stub getBmiDistribution() -> empty JSON.
-            val distFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val distFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
             // Return fake distribution.
-            restClientMock.`when`<CompletableFuture<JSONObject?>> { RestClient.getBmiDistribution() }.thenReturn(distFuture)
+            restClientMock.`when`<CompletableFuture<JSONObject?>> {
+                RestClient.getBmiDistribution()
+            }.thenReturn(distFuture)
 
             // Stub updateBmi("john", any double) -> success.
             restClientMock.`when`<CompletableFuture<Boolean>> {
-                RestClient.updateBmi(Mockito.eq("john"), Mockito.anyDouble())
+                RestClient.updateBmi(eq("john"), any<Double>())
             }.thenReturn(CompletableFuture.completedFuture(true))
 
             // Build and start BMIActivity.
@@ -250,12 +272,15 @@ class BMIActivityTest {
 
             // Verify updateBmi was called once for "john" with any double.
             restClientMock.verify(
-                { RestClient.updateBmi(Mockito.eq("john"), Mockito.anyDouble()) },
+                { RestClient.updateBmi(eq("john"), any<Double>()) },
                 Mockito.times(1)
             )
 
             // Get SharedPreferences.
-            val prefs = app.getSharedPreferences(app.getString(R.string.myprefs), Application.MODE_PRIVATE)
+            val prefs = app.getSharedPreferences(
+                app.getString(R.string.myprefs),
+                Application.MODE_PRIVATE
+            )
 
             // Get stored BMI value.
             val storedBmi = prefs.getFloat("lastBmi", -1f)
@@ -296,21 +321,28 @@ class BMIActivityTest {
             // Stub getBmi -> null.
             val bmiFuture: CompletableFuture<Double?> = CompletableFuture.completedFuture(null)
             // Return fake BMI future.
-            restClientMock.`when`<CompletableFuture<Double?>> { RestClient.getBmi("john") }.thenReturn(bmiFuture)
+            restClientMock.`when`<CompletableFuture<Double?>> {
+                RestClient.getBmi("john")
+            }.thenReturn(bmiFuture)
 
             // Stub getCalories -> 1000.
             val caloriesFuture: CompletableFuture<Int?> = CompletableFuture.completedFuture(1000)
             // Return fake calories future.
-            restClientMock.`when`<CompletableFuture<Int?>> { RestClient.getCalories("john") }.thenReturn(caloriesFuture)
+            restClientMock.`when`<CompletableFuture<Int?>> {
+                RestClient.getCalories("john")
+            }.thenReturn(caloriesFuture)
 
             // Stub getBmiDistribution -> empty JSON.
-            val distFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val distFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
             // Return fake BMI distribution.
-            restClientMock.`when`<CompletableFuture<JSONObject?>> { RestClient.getBmiDistribution() }.thenReturn(distFuture)
+            restClientMock.`when`<CompletableFuture<JSONObject?>> {
+                RestClient.getBmiDistribution()
+            }.thenReturn(distFuture)
 
-            // Stub setCalories -> true.
+            // Stub setCalories("john", any int) -> true.
             restClientMock.`when`<CompletableFuture<Boolean>> {
-                RestClient.setCalories(Mockito.eq("john"), Mockito.anyInt())
+                RestClient.setCalories(eq("john"), any<Int>())
             }.thenReturn(CompletableFuture.completedFuture(true))
 
             // Build activity.
@@ -342,7 +374,7 @@ class BMIActivityTest {
 
             // Check that setCalories was called with 1500.
             restClientMock.verify(
-                { RestClient.setCalories(Mockito.eq("john"), Mockito.eq(1500)) },
+                { RestClient.setCalories(eq("john"), eq(1500)) },
                 Mockito.times(1)
             )
 
@@ -379,21 +411,28 @@ class BMIActivityTest {
             // Stub getBmi -> null.
             val bmiFuture: CompletableFuture<Double?> = CompletableFuture.completedFuture(null)
             // Return fake BMI future.
-            restClientMock.`when`<CompletableFuture<Double?>> { RestClient.getBmi("john") }.thenReturn(bmiFuture)
+            restClientMock.`when`<CompletableFuture<Double?>> {
+                RestClient.getBmi("john")
+            }.thenReturn(bmiFuture)
 
             // Stub getCalories -> 1200.
             val caloriesFuture: CompletableFuture<Int?> = CompletableFuture.completedFuture(1200)
             // Return fake calories future.
-            restClientMock.`when`<CompletableFuture<Int?>> { RestClient.getCalories("john") }.thenReturn(caloriesFuture)
+            restClientMock.`when`<CompletableFuture<Int?>> {
+                RestClient.getCalories("john")
+            }.thenReturn(caloriesFuture)
 
             // Stub getBmiDistribution -> empty JSON.
-            val distFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val distFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
             // Return fake BMI distribution.
-            restClientMock.`when`<CompletableFuture<JSONObject?>> { RestClient.getBmiDistribution() }.thenReturn(distFuture)
+            restClientMock.`when`<CompletableFuture<JSONObject?>> {
+                RestClient.getBmiDistribution()
+            }.thenReturn(distFuture)
 
-            // Stub setCalories -> true.
+            // Stub setCalories("john", any int) -> true.
             restClientMock.`when`<CompletableFuture<Boolean>> {
-                RestClient.setCalories(Mockito.eq("john"), Mockito.anyInt())
+                RestClient.setCalories(eq("john"), any<Int>())
             }.thenReturn(CompletableFuture.completedFuture(true))
 
             // Build activity.
@@ -420,7 +459,7 @@ class BMIActivityTest {
 
             // Verify setCalories was called with 0.
             restClientMock.verify(
-                { RestClient.setCalories(Mockito.eq("john"), Mockito.eq(0)) },
+                { RestClient.setCalories(eq("john"), eq(0)) },
                 Mockito.times(1)
             )
         }
@@ -448,12 +487,16 @@ class BMIActivityTest {
             // Stub getBmi -> null.
             val bmiFuture: CompletableFuture<Double?> = CompletableFuture.completedFuture(null)
             // Return fake BMI future.
-            restClientMock.`when`<CompletableFuture<Double?>> { RestClient.getBmi("john") }.thenReturn(bmiFuture)
+            restClientMock.`when`<CompletableFuture<Double?>> {
+                RestClient.getBmi("john")
+            }.thenReturn(bmiFuture)
 
             // Stub getCalories -> 0.
             val caloriesFuture: CompletableFuture<Int?> = CompletableFuture.completedFuture(0)
             // Return fake calories future.
-            restClientMock.`when`<CompletableFuture<Int?>> { RestClient.getCalories("john") }.thenReturn(caloriesFuture)
+            restClientMock.`when`<CompletableFuture<Int?>> {
+                RestClient.getCalories("john")
+            }.thenReturn(caloriesFuture)
 
             // Build JSON distribution.
             val distJson = JSONObject()
@@ -467,9 +510,12 @@ class BMIActivityTest {
             distJson.put("Obese", 0)
 
             // Stub getBmiDistribution -> distJson.
-            val distFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(distJson)
+            val distFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(distJson)
             // Return fake distribution.
-            restClientMock.`when`<CompletableFuture<JSONObject?>> { RestClient.getBmiDistribution() }.thenReturn(distFuture)
+            restClientMock.`when`<CompletableFuture<JSONObject?>> {
+                RestClient.getBmiDistribution()
+            }.thenReturn(distFuture)
 
             // Build activity.
             val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
@@ -540,17 +586,24 @@ class BMIActivityTest {
             // Stub getBmi -> null.
             val bmiFuture: CompletableFuture<Double?> = CompletableFuture.completedFuture(null)
             // Return fake BMI future.
-            restClientMock.`when`<CompletableFuture<Double?>> { RestClient.getBmi("john") }.thenReturn(bmiFuture)
+            restClientMock.`when`<CompletableFuture<Double?>> {
+                RestClient.getBmi("john")
+            }.thenReturn(bmiFuture)
 
             // Stub getCalories -> 0.
             val caloriesFuture: CompletableFuture<Int?> = CompletableFuture.completedFuture(0)
             // Return fake calories future.
-            restClientMock.`when`<CompletableFuture<Int?>> { RestClient.getCalories("john") }.thenReturn(caloriesFuture)
+            restClientMock.`when`<CompletableFuture<Int?>> {
+                RestClient.getCalories("john")
+            }.thenReturn(caloriesFuture)
 
             // Stub getBmiDistribution -> empty JSON.
-            val distFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val distFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
             // Return fake distribution.
-            restClientMock.`when`<CompletableFuture<JSONObject?>> { RestClient.getBmiDistribution() }.thenReturn(distFuture)
+            restClientMock.`when`<CompletableFuture<JSONObject?>> {
+                RestClient.getBmiDistribution()
+            }.thenReturn(distFuture)
 
             // Build activity.
             val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()

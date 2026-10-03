@@ -12,6 +12,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 // Import Mockito for static mocking of RestClient.
 import org.mockito.Mockito
+// Import Mockito Kotlin matcher for non-null Kotlin objects.
+import org.mockito.kotlin.any
 // Import Robolectric runner + config.
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -86,7 +88,7 @@ class SignupActivityTest {
 
             // Verify that RestClient.register was NEVER called.
             restClientMock.verify(
-                { RestClient.register(Mockito.any(User::class.java)) },
+                { RestClient.register(any<User>()) },
                 Mockito.never()
             )
         }
@@ -102,11 +104,12 @@ class SignupActivityTest {
 
         restClientMock.use { restClientMock ->
             // Create pre-completed future with true (registration success).
-            val successFuture: CompletableFuture<Boolean> = CompletableFuture.completedFuture(true)
+            val successFuture: CompletableFuture<Boolean> =
+                CompletableFuture.completedFuture(true)
 
             // Stub RestClient.register to return successFuture for any User.
             restClientMock.`when`<CompletableFuture<Boolean>> {
-                RestClient.register(Mockito.any(User::class.java))
+                RestClient.register(any<User>())
             }.thenReturn(successFuture)
 
             // Build Activity under test.
@@ -139,7 +142,7 @@ class SignupActivityTest {
 
             // Verify that RestClient.register was called exactly once.
             restClientMock.verify(
-                { RestClient.register(Mockito.any(User::class.java)) },
+                { RestClient.register(any<User>()) },
                 Mockito.times(1)
             )
 
@@ -159,7 +162,10 @@ class SignupActivityTest {
             // Assert that Toast was shown.
             assertNotNull(toastText)
             // Assert that Toast message equals "sign_up_succesfully".
-            assertEquals(activity.getString(R.string.sign_up_succesfully), toastText.toString())
+            assertEquals(
+                activity.getString(R.string.sign_up_succesfully),
+                toastText.toString()
+            )
         }
     }
 
@@ -173,11 +179,12 @@ class SignupActivityTest {
 
         restClientMock.use { restClientMock ->
             // Create pre-completed future with false (registration failed).
-            val failFuture: CompletableFuture<Boolean> = CompletableFuture.completedFuture(false)
+            val failFuture: CompletableFuture<Boolean> =
+                CompletableFuture.completedFuture(false)
 
             // Stub RestClient.register to return false for any User.
             restClientMock.`when`<CompletableFuture<Boolean>> {
-                RestClient.register(Mockito.any(User::class.java))
+                RestClient.register(any<User>())
             }.thenReturn(failFuture)
 
             // Build Activity under test.
@@ -210,7 +217,7 @@ class SignupActivityTest {
 
             // Verify that RestClient.register was called once.
             restClientMock.verify(
-                { RestClient.register(Mockito.any(User::class.java)) },
+                { RestClient.register(any<User>()) },
                 Mockito.times(1)
             )
 
@@ -229,7 +236,10 @@ class SignupActivityTest {
             // Assert that Toast was shown.
             assertNotNull(toastText)
             // Assert that Toast message equals "username_allready_exists".
-            assertEquals(activity.getString(R.string.username_allready_exists), toastText.toString())
+            assertEquals(
+                activity.getString(R.string.username_allready_exists),
+                toastText.toString()
+            )
         }
     }
 }

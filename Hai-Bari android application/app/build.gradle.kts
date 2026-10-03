@@ -60,6 +60,7 @@ dependencies {
     // Provides ApplicationProvider for Robolectric JVM tests
     //noinspection UseTomlInstead
     testImplementation("androidx.test:core:1.7.0")
+    testImplementation(libs.mockito.kotlin)
     // Android instrumented tests
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.espresso.core)

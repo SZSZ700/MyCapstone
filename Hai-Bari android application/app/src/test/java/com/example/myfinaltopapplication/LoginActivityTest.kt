@@ -1,6 +1,5 @@
 // Define the package of the test.
 @file:Suppress("unused")
-
 package com.example.myfinaltopapplication
 // Import Android Context for SharedPreferences access.
 import android.content.Context
@@ -20,6 +19,9 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 // Import Mockito for static mocking of RestClient.
 import org.mockito.Mockito
+// Import Mockito Kotlin matchers.
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 // Import Robolectric test runner.
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -95,7 +97,7 @@ class LoginActivityTest {
 
             // Verify that RestClient.login was NEVER called.
             restClientMock.verify(
-                { RestClient.login(Mockito.anyString(), Mockito.anyString()) },
+                { RestClient.login(any<String>(), any<String>()) },
                 Mockito.never()
             )
         }
@@ -115,7 +117,8 @@ class LoginActivityTest {
             val fakeUser = User("john", 25, "John Doe")
 
             // Create a pre-completed future for login success.
-            val loginFuture: CompletableFuture<User?> = CompletableFuture.completedFuture(fakeUser)
+            val loginFuture: CompletableFuture<User?> =
+                CompletableFuture.completedFuture(fakeUser)
 
             // Create a fake JSONObject for water data.
             val waterJson = JSONObject()
@@ -125,16 +128,17 @@ class LoginActivityTest {
             waterJson.put("yesterdayWater", 800)
 
             // Create a pre-completed future for getWater success.
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(waterJson)
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(waterJson)
 
             // Stub RestClient.login to return the loginFuture when called with "john","1234".
             restClientMock.`when`<CompletableFuture<User?>> {
-                RestClient.login("john", "1234")
+                RestClient.login(eq("john"), eq("1234"))
             }.thenReturn(loginFuture)
 
             // Stub RestClient.getWater to return the waterFuture when called with "john".
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
-                RestClient.getWater("john")
+                RestClient.getWater(eq("john"))
             }.thenReturn(waterFuture)
 
             // Build the Activity under test.
@@ -160,23 +164,32 @@ class LoginActivityTest {
 
             // Verify that RestClient.login was called exactly once with "john","1234".
             restClientMock.verify(
-                { RestClient.login("john", "1234") },
+                { RestClient.login(eq("john"), eq("1234")) },
                 Mockito.times(1)
             )
 
             // Verify that RestClient.getWater was called exactly once with "john".
             restClientMock.verify(
-                { RestClient.getWater("john") },
+                { RestClient.getWater(eq("john")) },
                 Mockito.times(1)
             )
 
             // Obtain SharedPreferences used by LoginActivity.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Read stored current user from SharedPreferences.
-            val storedUser = prefs.getString(activity.getString(R.string.currentuser), null)
+            val storedUser = prefs.getString(
+                activity.getString(R.string.currentuser),
+                null
+            )
             // Read stored age from SharedPreferences.
-            val storedAge = prefs.getInt(activity.getString(R.string.age), -1)
+            val storedAge = prefs.getInt(
+                activity.getString(R.string.age),
+                -1
+            )
             // Read stored fullName from SharedPreferences.
             val storedFullName = prefs.getString("fullName", null)
             // Read stored todayWater from SharedPreferences.
@@ -204,7 +217,10 @@ class LoginActivityTest {
             // Assert that an Activity was indeed started.
             assertNotNull(startedIntent)
             // Assert that the started Activity is HomePage.
-            assertEquals(HomePage::class.java.name, startedIntent!!.component!!.className)
+            assertEquals(
+                HomePage::class.java.name,
+                startedIntent!!.component!!.className
+            )
 
             // Get latest Toast text shown to the user.
             val toastText: CharSequence? = ShadowToast.getTextOfLatestToast()
@@ -227,11 +243,12 @@ class LoginActivityTest {
 
         restClientMock.use { restClientMock ->
             // Create a pre-completed future that returns null (login failed).
-            val failedFuture: CompletableFuture<User?> = CompletableFuture.completedFuture(null)
+            val failedFuture: CompletableFuture<User?> =
+                CompletableFuture.completedFuture(null)
 
             // Stub RestClient.login to return failedFuture for these credentials.
             restClientMock.`when`<CompletableFuture<User?>> {
-                RestClient.login("john", "bad pass")
+                RestClient.login(eq("john"), eq("bad pass"))
             }.thenReturn(failedFuture)
 
             // Build the Activity under test.
@@ -239,7 +256,10 @@ class LoginActivityTest {
 
             // Get SharedPreferences reference before login attempt.
             @Suppress("UNUSED_VARIABLE")
-            val prefsBefore = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefsBefore = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Find username EditText.
             val username: EditText = activity.findViewById(R.id.editTextText)
@@ -261,7 +281,7 @@ class LoginActivityTest {
 
             // Verify that RestClient.login was called once with "john","bad pass".
             restClientMock.verify(
-                { RestClient.login("john", "bad pass") },
+                { RestClient.login(eq("john"), eq("bad pass")) },
                 Mockito.times(1)
             )
 
@@ -283,10 +303,16 @@ class LoginActivityTest {
             assertEquals("Invalid username or password", toastText.toString())
 
             // Read SharedPreferences after login attempt.
-            val prefsAfter = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefsAfter = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Read current user from prefs after login.
-            val storedUser = prefsAfter.getString(activity.getString(R.string.currentuser), null)
+            val storedUser = prefsAfter.getString(
+                activity.getString(R.string.currentuser),
+                null
+            )
 
             // Assert that user was NOT stored (still null).
             assertNull(storedUser)
@@ -317,7 +343,10 @@ class LoginActivityTest {
         assertNotNull(startedIntent)
 
         // Assert that the started Activity is signup.
-        assertEquals(signup::class.java.name, startedIntent!!.component!!.className)
+        assertEquals(
+            signup::class.java.name,
+            startedIntent!!.component!!.className
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -334,19 +363,21 @@ class LoginActivityTest {
             val fakeUser = User("john", 25, "John Doe")
 
             // Pre-completed future for login success.
-            val loginFuture: CompletableFuture<User?> = CompletableFuture.completedFuture(fakeUser)
+            val loginFuture: CompletableFuture<User?> =
+                CompletableFuture.completedFuture(fakeUser)
 
             // getWater will return null inside the future.
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(null)
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(null)
 
             // Stub RestClient.login("john","1234") -> loginFuture.
             restClientMock.`when`<CompletableFuture<User?>> {
-                RestClient.login("john", "1234")
+                RestClient.login(eq("john"), eq("1234"))
             }.thenReturn(loginFuture)
 
             // Stub RestClient.getWater("john") -> waterFuture (null JSON).
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
-                RestClient.getWater("john")
+                RestClient.getWater(eq("john"))
             }.thenReturn(waterFuture)
 
             // Build the Activity under test.
@@ -371,23 +402,32 @@ class LoginActivityTest {
 
             // Verify that RestClient.login was called exactly once.
             restClientMock.verify(
-                { RestClient.login("john", "1234") },
+                { RestClient.login(eq("john"), eq("1234")) },
                 Mockito.times(1)
             )
 
             // Verify that RestClient.getWater was called exactly once.
             restClientMock.verify(
-                { RestClient.getWater("john") },
+                { RestClient.getWater(eq("john")) },
                 Mockito.times(1)
             )
 
             // Obtain SharedPreferences.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Read stored current user.
-            val storedUser = prefs.getString(activity.getString(R.string.currentuser), null)
+            val storedUser = prefs.getString(
+                activity.getString(R.string.currentuser),
+                null
+            )
             // Read stored age.
-            val storedAge = prefs.getInt(activity.getString(R.string.age), -1)
+            val storedAge = prefs.getInt(
+                activity.getString(R.string.age),
+                -1
+            )
             // Read stored full name.
             val storedFullName = prefs.getString("fullName", null)
 
@@ -412,7 +452,10 @@ class LoginActivityTest {
             // Assert that an Activity was indeed started.
             assertNotNull(startedIntent)
             // Assert that the started Activity is HomePage.
-            assertEquals(HomePage::class.java.name, startedIntent!!.component!!.className)
+            assertEquals(
+                HomePage::class.java.name,
+                startedIntent!!.component!!.className
+            )
 
             // Verify welcome Toast is shown.
             val toastText: CharSequence? = ShadowToast.getTextOfLatestToast()

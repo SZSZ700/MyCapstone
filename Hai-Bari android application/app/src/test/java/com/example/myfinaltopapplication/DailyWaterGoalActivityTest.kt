@@ -22,6 +22,9 @@ import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowToast
 // Mockito.
 import org.mockito.Mockito
+// Mockito Kotlin matchers.
+import org.mockito.kotlin.any
+import org.mockito.kotlin.eq
 // Java concurrency.
 import java.util.concurrent.CompletableFuture
 // MPAndroidChart imports to inspect donut chart state.
@@ -115,7 +118,7 @@ class DailyWaterGoalActivityTest {
 
             // Verify that setGoal was never called.
             restClientMock.verify(
-                { RestClient.setGoal(Mockito.anyString(), Mockito.anyInt()) },
+                { RestClient.setGoal(any<String>(), any<Int>()) },
                 Mockito.never()
             )
         }
@@ -180,7 +183,7 @@ class DailyWaterGoalActivityTest {
 
             // Verify setGoal not called.
             restClientMock.verify(
-                { RestClient.setGoal(Mockito.anyString(), Mockito.anyInt()) },
+                { RestClient.setGoal(any<String>(), any<Int>()) },
                 Mockito.never()
             )
         }
@@ -246,7 +249,7 @@ class DailyWaterGoalActivityTest {
 
             // Verify setGoal was not invoked.
             restClientMock.verify(
-                { RestClient.setGoal(Mockito.anyString(), Mockito.anyInt()) },
+                { RestClient.setGoal(any<String>(), any<Int>()) },
                 Mockito.never()
             )
         }
@@ -300,9 +303,9 @@ class DailyWaterGoalActivityTest {
             // Stub setGoal("john", 2600) to succeed.
             val setGoalFuture: CompletableFuture<Boolean> = CompletableFuture.completedFuture(true)
 
-            // Stub setGoal for "john".
+            // Stub setGoal using Kotlin matchers.
             restClientMock.`when`<CompletableFuture<Boolean>> {
-                RestClient.setGoal("john", 2600)
+                RestClient.setGoal(eq("john"), eq(2600))
             }.thenReturn(setGoalFuture)
 
             // Build Activity.
@@ -338,7 +341,7 @@ class DailyWaterGoalActivityTest {
 
             // Verify setGoal was called exactly once with "john", 2600.
             restClientMock.verify(
-                { RestClient.setGoal("john", 2600) },
+                { RestClient.setGoal(eq("john"), eq(2600)) },
                 Mockito.times(1)
             )
 

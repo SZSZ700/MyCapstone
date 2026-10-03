@@ -20,6 +20,8 @@ import org.robolectric.Shadows
 import org.robolectric.annotation.Config
 // Import Mockito for static mocking of RestClient.
 import org.mockito.Mockito
+// Import Mockito Kotlin matcher.
+import org.mockito.kotlin.eq
 // Import Java collections and concurrency.
 import java.util.LinkedHashMap
 import java.util.concurrent.CompletableFuture
@@ -45,7 +47,10 @@ class WaterChartActivityTest {
     // -------------------------------------------------------------------------
     private fun putUserInPrefs(app: Application) {
         // Get SharedPreferences file by name.
-        val prefs = app.getSharedPreferences(app.getString(R.string.myprefs), Application.MODE_PRIVATE)
+        val prefs = app.getSharedPreferences(
+            app.getString(R.string.myprefs),
+            Application.MODE_PRIVATE
+        )
 
         // Store current user in SharedPreferences.
         val editor = prefs.edit()
@@ -80,7 +85,7 @@ class WaterChartActivityTest {
 
             // Stub RestClient.getWaterHistoryMap("john", 7) to return null future.
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
-                RestClient.getWaterHistoryMap("john", 7)
+                RestClient.getWaterHistoryMap(eq("john"), eq(7))
             }.thenReturn(historyFuture)
 
             // Prepare future for weekly averages: empty map.
@@ -89,11 +94,13 @@ class WaterChartActivityTest {
 
             // Stub RestClient.getWeeklyAverages("john") to return empty map.
             restClientMock.`when`<CompletableFuture<Map<String, Int>>> {
-                RestClient.getWeeklyAverages("john")
+                RestClient.getWeeklyAverages(eq("john"))
             }.thenReturn(weeklyFuture)
 
             // Build and start WaterChartActivity.
-            val activity = Robolectric.buildActivity(WaterChartActivity::class.java).setup().get()
+            val activity = Robolectric.buildActivity(WaterChartActivity::class.java)
+                .setup()
+                .get()
 
             // Run all pending UI tasks (runOnUiThread).
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -106,13 +113,13 @@ class WaterChartActivityTest {
 
             // Verify that getWaterHistoryMap was called once with "john",7.
             restClientMock.verify(
-                { RestClient.getWaterHistoryMap("john", 7) },
+                { RestClient.getWaterHistoryMap(eq("john"), eq(7)) },
                 Mockito.times(1)
             )
 
             // Verify that getWeeklyAverages was called once with "john".
             restClientMock.verify(
-                { RestClient.getWeeklyAverages("john") },
+                { RestClient.getWeeklyAverages(eq("john")) },
                 Mockito.times(1)
             )
         }
@@ -150,7 +157,7 @@ class WaterChartActivityTest {
 
             // Stub getWaterHistoryMap to return our JSON for "john",7.
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
-                RestClient.getWaterHistoryMap("john", 7)
+                RestClient.getWaterHistoryMap(eq("john"), eq(7))
             }.thenReturn(historyFuture)
 
             // Prepare weekly averages: empty map (not the focus of this test).
@@ -159,11 +166,13 @@ class WaterChartActivityTest {
 
             // Stub getWeeklyAverages.
             restClientMock.`when`<CompletableFuture<Map<String, Int>>> {
-                RestClient.getWeeklyAverages("john")
+                RestClient.getWeeklyAverages(eq("john"))
             }.thenReturn(weeklyFuture)
 
             // Build and start WaterChartActivity.
-            val activity = Robolectric.buildActivity(WaterChartActivity::class.java).setup().get()
+            val activity = Robolectric.buildActivity(WaterChartActivity::class.java)
+                .setup()
+                .get()
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -227,7 +236,7 @@ class WaterChartActivityTest {
 
             // Stub getWaterHistoryMap with empty JSON.
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
-                RestClient.getWaterHistoryMap("john", 7)
+                RestClient.getWaterHistoryMap(eq("john"), eq(7))
             }.thenReturn(historyFuture)
 
             // Build LinkedHashMap for weekly averages to preserve insertion order.
@@ -243,11 +252,13 @@ class WaterChartActivityTest {
 
             // Stub getWeeklyAverages.
             restClientMock.`when`<CompletableFuture<Map<String, Int>>> {
-                RestClient.getWeeklyAverages("john")
+                RestClient.getWeeklyAverages(eq("john"))
             }.thenReturn(weeklyFuture)
 
             // Build and start WaterChartActivity.
-            val activity = Robolectric.buildActivity(WaterChartActivity::class.java).setup().get()
+            val activity = Robolectric.buildActivity(WaterChartActivity::class.java)
+                .setup()
+                .get()
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -309,16 +320,18 @@ class WaterChartActivityTest {
 
             // Stub getWaterHistoryMap.
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
-                RestClient.getWaterHistoryMap("john", 7)
+                RestClient.getWaterHistoryMap(eq("john"), eq(7))
             }.thenReturn(historyFuture)
 
             // Stub getWeeklyAverages.
             restClientMock.`when`<CompletableFuture<Map<String, Int>>> {
-                RestClient.getWeeklyAverages("john")
+                RestClient.getWeeklyAverages(eq("john"))
             }.thenReturn(weeklyFuture)
 
             // Build and start WaterChartActivity.
-            val activity = Robolectric.buildActivity(WaterChartActivity::class.java).setup().get()
+            val activity = Robolectric.buildActivity(WaterChartActivity::class.java)
+                .setup()
+                .get()
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -339,7 +352,10 @@ class WaterChartActivityTest {
             assertNotNull(started)
 
             // Assert that the target Activity is HomePage.
-            assertEquals(HomePage::class.java.name, started.component!!.className)
+            assertEquals(
+                HomePage::class.java.name,
+                started.component!!.className
+            )
         }
     }
 }

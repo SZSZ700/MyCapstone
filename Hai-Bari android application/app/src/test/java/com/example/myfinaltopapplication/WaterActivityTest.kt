@@ -24,6 +24,8 @@ import org.junit.runner.RunWith
 import androidx.test.core.app.ApplicationProvider
 import org.mockito.MockedStatic
 import org.mockito.Mockito
+// Mockito Kotlin matchers.
+import org.mockito.kotlin.any
 // Robolectric.
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
@@ -57,25 +59,29 @@ class WaterActivityTest {
     // -------------------------------------------------------------------------
     // Helper: build activity with NO user in SharedPreferences.
     // -------------------------------------------------------------------------
-    private fun buildActivityNoUser(restClientMock: MockedStatic<RestClient>): WaterActivity {
+    private fun buildActivityNoUser(
+        restClientMock: MockedStatic<RestClient>
+    ): WaterActivity {
+
         // Stub backend calls so they won't actually run (defensive).
         // Stub getWater.
         restClientMock.`when`<CompletableFuture<JSONObject?>> {
-            RestClient.getWater(Mockito.anyString())
+            RestClient.getWater(any<String>())
         }.thenReturn(CompletableFuture.completedFuture(null))
 
         // Stub getWaterHistoryMap (may or may not be used depending on history).
         restClientMock.`when`<CompletableFuture<JSONObject?>> {
-            RestClient.getWaterHistoryMap(Mockito.anyString(), Mockito.anyInt())
+            RestClient.getWaterHistoryMap(any<String>(), any<Int>())
         }.thenReturn(CompletableFuture.completedFuture(null))
 
         // Stub getGoal (may or may not be used depending on history).
         restClientMock.`when`<CompletableFuture<JSONObject?>> {
-            RestClient.getGoal(Mockito.anyString())
+            RestClient.getGoal(any<String>())
         }.thenReturn(CompletableFuture.completedFuture(null))
 
         // Build controller, but DO NOT touch SharedPreferences before setup().
-        val controller: ActivityController<WaterActivity> = Robolectric.buildActivity(WaterActivity::class.java)
+        val controller: ActivityController<WaterActivity> =
+            Robolectric.buildActivity(WaterActivity::class.java)
 
         // Run onCreate / onStart / onResume.
         val activity = controller.setup().get()
@@ -119,13 +125,17 @@ class WaterActivityTest {
         }.thenReturn(CompletableFuture.completedFuture(goalJson))
 
         // Prepare controller (onCreate not called yet).
-        val controller: ActivityController<WaterActivity> = Robolectric.buildActivity(WaterActivity::class.java)
+        val controller: ActivityController<WaterActivity> =
+            Robolectric.buildActivity(WaterActivity::class.java)
 
         // Get activity instance BEFORE setup, to access SharedPreferences.
         val activity = controller.get()
 
         // Fill SharedPreferences with currentuser + initial water values.
-        val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+        val prefs = activity.getSharedPreferences(
+            activity.getString(R.string.myprefs),
+            Context.MODE_PRIVATE
+        )
 
         // Save current user and initial water values.
         prefs.edit()
@@ -165,7 +175,10 @@ class WaterActivityTest {
             // Assert that we navigated to another Activity.
             assertNotNull(startedIntent)
             // Assert that the target Activity is LoginActivity.
-            assertEquals(LoginActivity::class.java.name, startedIntent.component!!.className)
+            assertEquals(
+                LoginActivity::class.java.name,
+                startedIntent.component!!.className
+            )
 
             // Check latest Toast text.
             val toastText: CharSequence? = ShadowToast.getTextOfLatestToast()
@@ -215,11 +228,18 @@ class WaterActivityTest {
             val yesterdayText: TextView = activity.findViewById(R.id.yesterdayText)
 
             // UI should show values from server (1200 & 800).
-            assertEquals("So far today: 1200 ml", totalWaterText.text.toString())
-            assertEquals("Yesterday: 800 ml", yesterdayText.text.toString())
+            assertEquals("So far today: 1200 ml",
+                totalWaterText.text.toString()
+            )
+            assertEquals("Yesterday: 800 ml",
+                yesterdayText.text.toString()
+            )
 
             // SharedPreferences should also be updated.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Assert that SharedPreferences were updated.
             assertEquals(1200, prefs.getInt("todayWater", -1))
@@ -277,10 +297,15 @@ class WaterActivityTest {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Text should show 200 ml (0 + 200).
-            assertEquals("So far today: 200 ml", totalWaterText.text.toString())
+            assertEquals("So far today: 200 ml",
+                totalWaterText.text.toString()
+            )
 
             // Get SharedPreferences.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
             // SharedPreferences todayWater should be 200.
             assertEquals(200, prefs.getInt("todayWater", -1))
 
@@ -321,10 +346,7 @@ class WaterActivityTest {
             }.thenReturn(CompletableFuture.completedFuture(false))
 
             // Build activity.
-            val activity = buildActivityWithUser(
-                0,
-                0,
-                waterJson,
+            val activity = buildActivityWithUser(0, 0, waterJson,
                 emptyHistory,
                 null,
                 restClientMock
@@ -342,10 +364,15 @@ class WaterActivityTest {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // UI still shows 200 ml (since local counter increased).
-            assertEquals("So far today: 200 ml", totalWaterText.text.toString())
+            assertEquals("So far today: 200 ml",
+                totalWaterText.text.toString()
+            )
 
             // Get SharedPreferences.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
             // SharedPreferences should remain 0 because updateWater failed.
             assertEquals(0, prefs.getInt("todayWater", 0))
 
@@ -384,10 +411,7 @@ class WaterActivityTest {
             goalJson.put("goalMl", 3000)
 
             // Build activity with user "john".
-            val activity = buildActivityWithUser(
-                0,
-                0,
-                waterJson,
+            val activity = buildActivityWithUser(0, 0, waterJson,
                 emptyHistory,
                 goalJson,
                 restClientMock
@@ -405,15 +429,23 @@ class WaterActivityTest {
             val lowestDayText: TextView = activity.findViewById(R.id.lowestDayText)
 
             // Title mentions last 7 days.
-            assertEquals("Goal consistency (last 7 days)", goalSummaryTitle.text.toString())
+            assertEquals("Goal consistency (last 7 days)",
+                goalSummaryTitle.text.toString()
+            )
             // Text indicates no history.
-            assertEquals("No history data available", goalSummaryText.text.toString())
+            assertEquals("No history data available",
+                goalSummaryText.text.toString()
+            )
             // Progress bar 0.
             assertEquals(0, goalProgressBar.progress)
             // Best day should be "no data".
-            assertEquals("Best day: no data", bestDayText.text.toString())
+            assertEquals("Best day: no data",
+                bestDayText.text.toString()
+            )
             // Lowest day should be "no data".
-            assertEquals("Lowest day: no data", lowestDayText.text.toString())
+            assertEquals("Lowest day: no data",
+                lowestDayText.text.toString()
+            )
         }
     }
 
@@ -437,10 +469,7 @@ class WaterActivityTest {
             val emptyHistory = JSONObject()
 
             // Build activity.
-            val activity = buildActivityWithUser(
-                0,
-                0,
-                waterJson,
+            val activity = buildActivityWithUser(0, 0, waterJson,
                 emptyHistory,
                 null,
                 restClientMock
@@ -464,7 +493,9 @@ class WaterActivityTest {
             // Assert that we navigated to another Activity.
             assertNotNull(startedIntent)
             // Assert that the target Activity is HomePage.
-            assertEquals(HomePage::class.java.name, startedIntent.component!!.className)
+            assertEquals(HomePage::class.java.name,
+                startedIntent.component!!.className
+            )
         }
     }
 
@@ -473,7 +504,10 @@ class WaterActivityTest {
     // -------------------------------------------------------------------------
     private fun seedLoggedInUserPrefs(context: Context) {
         // Get the same SharedPreferences file WaterActivity uses.
-        val prefs: SharedPreferences = context.getSharedPreferences(context.getString(R.string.myprefs), Context.MODE_PRIVATE)
+        val prefs: SharedPreferences = context.getSharedPreferences(
+            context.getString(R.string.myprefs),
+            Context.MODE_PRIVATE
+        )
 
         // Save a non-null current user so WaterActivity does not redirect to LoginActivity.
         prefs.edit()
@@ -487,7 +521,8 @@ class WaterActivityTest {
     // -------------------------------------------------------------------------
     // Helper: Build WaterActivity safely with RestClient mocked.
     // -------------------------------------------------------------------------
-    private fun buildWaterActivityWithRestClientMock(restClientMock: MockedStatic<RestClient>): WaterActivity {
+    private fun buildWaterActivityWithRestClientMock(restClientMock: MockedStatic<RestClient>
+    ): WaterActivity {
         // Get application context.
         val context: Context = ApplicationProvider.getApplicationContext()
 
@@ -543,7 +578,9 @@ class WaterActivityTest {
     // -------------------------------------------------------------------------
     // Helper: Get "next alarm" in a version-safe way.
     // -------------------------------------------------------------------------
-    private fun getNextAlarm(shadowAm: ShadowAlarmManager): ShadowAlarmManager.ScheduledAlarm? {
+    private fun getNextAlarm(
+        shadowAm: ShadowAlarmManager
+    ): ShadowAlarmManager.ScheduledAlarm? {
         // Try to peek without consuming.
         return try {
             // Call peekNextScheduledAlarm if present.
@@ -564,10 +601,12 @@ class WaterActivityTest {
 
         restClientMock.use { restClientMock ->
             // Build WaterActivity with seeded prefs and RestClient stubs.
-            val activity = buildWaterActivityWithRestClientMock(restClientMock)
+            val activity =
+                buildWaterActivityWithRestClientMock(restClientMock)
 
             // Find the reminder switch in the layout.
-            val reminderSwitch: Switch = activity.findViewById(R.id.switchWaterReminder)
+            val reminderSwitch: Switch =
+                activity.findViewById(R.id.switchWaterReminder)
 
             // Turn ON the switch (this triggers OnCheckedChangeListener).
             reminderSwitch.isChecked = true
@@ -576,10 +615,18 @@ class WaterActivityTest {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Read preferences from the same prefs file.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Assert the boolean was saved as true.
-            assertTrue(prefs.getBoolean(KEY_WATER_REMINDER_ENABLED, false))
+            assertTrue(
+                prefs.getBoolean(
+                    KEY_WATER_REMINDER_ENABLED,
+                    false
+                )
+            )
 
             // Get AlarmManager service.
             val am = activity.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -605,7 +652,8 @@ class WaterActivityTest {
 
         restClientMock.use { restClientMock ->
             // Build WaterActivity with seeded prefs and RestClient stubs.
-            val activity = buildWaterActivityWithRestClientMock(restClientMock)
+            val activity =
+                buildWaterActivityWithRestClientMock(restClientMock)
 
             // Find the reminder switch in the layout.
             val reminderSwitch: Switch = activity.findViewById(R.id.switchWaterReminder)
@@ -632,10 +680,18 @@ class WaterActivityTest {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Read preferences again.
-            val prefs = activity.getSharedPreferences(activity.getString(R.string.myprefs), Context.MODE_PRIVATE)
+            val prefs = activity.getSharedPreferences(
+                activity.getString(R.string.myprefs),
+                Context.MODE_PRIVATE
+            )
 
             // Assert the boolean was saved as false.
-            assertFalse(prefs.getBoolean(KEY_WATER_REMINDER_ENABLED, true))
+            assertFalse(
+                prefs.getBoolean(
+                    KEY_WATER_REMINDER_ENABLED,
+                    true
+                )
+            )
 
             // After cancel, next alarm should be null.
             assertNull(getNextAlarm(shadowAm))
@@ -651,7 +707,9 @@ class WaterActivityTest {
         val context: Context = ApplicationProvider.getApplicationContext()
 
         // Get NotificationManager service.
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val nm =
+            context.getSystemService(Context.NOTIFICATION_SERVICE)
+                    as NotificationManager
 
         // Get shadow NotificationManager.
         val shadowNm: ShadowNotificationManager = Shadows.shadowOf(nm)
@@ -663,7 +721,8 @@ class WaterActivityTest {
         val receiver = WaterReminderReceiver()
 
         // Create an intent targeting the receiver.
-        val intent = Intent(context, WaterReminderReceiver::class.java)
+        val intent =
+            Intent(context, WaterReminderReceiver::class.java)
 
         // Trigger onReceive manually.
         receiver.onReceive(context, intent)
@@ -675,10 +734,12 @@ class WaterActivityTest {
         val n: Notification = shadowNm.allNotifications[0]
 
         // Read title from extras.
-        val title = n.extras.getString(Notification.EXTRA_TITLE)
+        val title =
+            n.extras.getString(Notification.EXTRA_TITLE)
 
         // Read text from extras.
-        val text = n.extras.getString(Notification.EXTRA_TEXT)
+        val text =
+            n.extras.getString(Notification.EXTRA_TEXT)
 
         // Assert title matches your receiver code.
         assertEquals("Water reminder", title)
@@ -697,10 +758,12 @@ class WaterActivityTest {
 
         restClientMock.use { restClientMock ->
             // Build WaterActivity with seeded prefs and RestClient stubs.
-            val activity = buildWaterActivityWithRestClientMock(restClientMock)
+            val activity =
+                buildWaterActivityWithRestClientMock(restClientMock)
 
             // Find the reminder switch.
-            val reminderSwitch: Switch = activity.findViewById(R.id.switchWaterReminder)
+            val reminderSwitch: Switch =
+                activity.findViewById(R.id.switchWaterReminder)
 
             // Turn ON reminder.
             reminderSwitch.isChecked = true
@@ -709,7 +772,8 @@ class WaterActivityTest {
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Get AlarmManager service.
-            val am = activity.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val am =
+                activity.getSystemService(Context.ALARM_SERVICE) as AlarmManager
 
             // Get shadow AlarmManager.
             val shadowAm = Shadows.shadowOf(am)
@@ -718,7 +782,9 @@ class WaterActivityTest {
             assertNotNull(getNextAlarm(shadowAm))
 
             // Get NotificationManager service.
-            val nm = activity.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val nm =
+                activity.getSystemService(Context.NOTIFICATION_SERVICE)
+                        as NotificationManager
 
             // Get shadow NotificationManager.
             val shadowNm: ShadowNotificationManager = Shadows.shadowOf(nm)
@@ -730,7 +796,13 @@ class WaterActivityTest {
             val receiver = WaterReminderReceiver()
 
             // Trigger receiver.
-            receiver.onReceive(activity, Intent(activity, WaterReminderReceiver::class.java))
+            receiver.onReceive(
+                activity,
+                Intent(
+                    activity,
+                    WaterReminderReceiver::class.java
+                )
+            )
 
             // Assert notification exists.
             assertEquals(1, shadowNm.allNotifications.size)
@@ -739,10 +811,16 @@ class WaterActivityTest {
             val n: Notification = shadowNm.allNotifications[0]
 
             // Assert title.
-            assertEquals("Water reminder", n.extras.getString(Notification.EXTRA_TITLE))
+            assertEquals(
+                "Water reminder",
+                n.extras.getString(Notification.EXTRA_TITLE)
+            )
 
             // Assert text.
-            assertEquals("Time to drink water 💧", n.extras.getString(Notification.EXTRA_TEXT))
+            assertEquals(
+                "Time to drink water 💧",
+                n.extras.getString(Notification.EXTRA_TEXT)
+            )
         }
     }
 }

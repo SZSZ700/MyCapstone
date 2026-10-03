@@ -87,6 +87,7 @@ class HomePageTest {
 
         // Run pending tasks in main looper (defensive).
         Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         // Get ShadowActivity for navigation inspection.
         val shadowActivity: ShadowActivity = Shadows.shadowOf(activity)
         // Get next started activity Intent.
@@ -113,6 +114,7 @@ class HomePageTest {
 
         // Run pending tasks in main looper.
         Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         // Get ShadowActivity.
         val shadowActivity: ShadowActivity = Shadows.shadowOf(activity)
         // Get next started activity Intent.
@@ -139,6 +141,7 @@ class HomePageTest {
 
         // Run pending tasks in main looper.
         Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         // Get ShadowActivity.
         val shadowActivity: ShadowActivity = Shadows.shadowOf(activity)
         // Get next started activity Intent.
@@ -165,6 +168,7 @@ class HomePageTest {
 
         // Run pending tasks in main looper.
         Shadows.shadowOf(Looper.getMainLooper()).idle()
+
         // Get ShadowActivity.
         val shadowActivity: ShadowActivity = Shadows.shadowOf(activity)
         // Get next started activity Intent.
