@@ -295,11 +295,9 @@ class WaterChartActivityTest {
             )
 
             // Get first and second entries.
-            val first =
-                set.getEntryForIndex(0)
+            val first = set.getEntryForIndex(0)
 
-            val second =
-                set.getEntryForIndex(1)
+            val second = set.getEntryForIndex(1)
 
             // Assert Y-values match our JSON (1000, 2000).
             assertEquals(
