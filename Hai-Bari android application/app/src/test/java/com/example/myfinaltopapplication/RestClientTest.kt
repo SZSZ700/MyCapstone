@@ -1,5 +1,9 @@
 // Define the package that contains this instrumented test class.
 package com.example.myfinaltopapplication
+// Import JUnit runner support.
+import org.junit.runner.RunWith
+// Import Robolectric runner for local Android-aware JVM tests.
+import org.robolectric.RobolectricTestRunner
 // Import assertions for JUnit tests.
 import org.junit.Assert.assertEquals
 // Import assertFalse for use in this test file.
@@ -10,18 +14,8 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 // Import assertTrue for use in this test file.
 import org.junit.Assert.assertTrue
-// Import Android Log for debug printing.
-import android.util.Log
-// Import JUnit4 runner for Android instrumented tests.
-import androidx.test.ext.junit.runners.AndroidJUnit4
-// Import JUnit annotations for lifecycle and tests.
-import org.junit.AfterClass
-// Import BeforeClass for use in this test file.
-import org.junit.BeforeClass
 // Import Test for use in this test file.
 import org.junit.Test
-// Import RunWith for use in this test file.
-import org.junit.runner.RunWith
 // Import JSON object for parsing and building JSON bodies.
 import org.json.JSONObject
 // Import collections for map-based responses.
@@ -38,6 +32,8 @@ import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 // Import RecordedRequest for use in this test file.
 import okhttp3.mockwebserver.RecordedRequest
+import org.junit.After
+import org.junit.Before
 
 /**
  * RestClientTest - integration-like unit tests for the Android RestClient class
@@ -54,121 +50,112 @@ import okhttp3.mockwebserver.RecordedRequest
  lets us inspect the request that RestClient actually sent.
 */
 
-// Suppress the selected IDE inspection warning for this test class.
-// Configure JUnit to run this test class with AndroidJUnit4.
-@RunWith(AndroidJUnit4::class)
+
 // Declare the RestClientTest test class.
+@RunWith(RobolectricTestRunner::class)
 class RestClientTest {
+    // Hold a single MockWebServer instance for the current test.
+    private lateinit var mockWebServer: MockWebServer
 
-    // Open a companion object for values and lifecycle functions shared by all tests.
+    // Hold the original OkHttpClient from RestClient so we can restore it after the test.
+    private lateinit var originalClient: OkHttpClient
+
+    // Open a companion object for constants shared by all tests.
     companion object {
-
-        // Hold a single MockWebServer instance shared by all tests.
-        private lateinit var mockWebServer: MockWebServer
-
-        // Hold the original OkHttpClient from RestClient so we can restore it after tests.
-        private lateinit var originalClient: OkHttpClient
-
         // Define a timeout in seconds for waiting on CompletableFuture results.
         private const val FUTURE_TIMEOUT_SECONDS = 5L
+    }
 
-        // -------------------------------------------------------------
-        // Setup before all tests.
-        // -------------------------------------------------------------
-        // Expose the following companion-object function as a JVM static method.
-        @JvmStatic
-        // Run the following setup function once before all tests.
-        @BeforeClass
-        // Declare the class-level setup function.
-        fun setUpClass() {
-            // Create a new MockWebServer instance.
-            mockWebServer = MockWebServer()
+    // -------------------------------------------------------------
+    // Setup before each test.
+    // -------------------------------------------------------------
+    // Run the following setup function before every test.
+    @Before
+    fun setUp() {
+        // Create a new MockWebServer instance.
+        mockWebServer = MockWebServer()
 
-            // Start the mock server so it begins listening on an available port.
-            mockWebServer.start()
+        // Start the mock server so it begins listening on an available port.
+        mockWebServer.start()
 
-            // Log the URL of the mock server for debug purposes.
-            Log.d("TEST", "MockWebServer started at: ${mockWebServer.url("/")}")
+        // Log the URL of the mock server for debug purposes.
+        println("TEST - MockWebServer started at: ${mockWebServer.url("/")}")
 
-            // Use reflection to read the current static OkHttpClient from RestClient.
-            val clientField = RestClient::class.java.getDeclaredField("client")
+        // Use reflection to read the current OkHttpClient from RestClient.
+        val clientField = RestClient::class.java.getDeclaredField("client")
 
-            // Allow access to the private field.
-            clientField.isAccessible = true
+        // Allow access to the private field.
+        clientField.isAccessible = true
 
-            // Save the original client so we can restore it later.
-            originalClient = clientField.get(null) as OkHttpClient
+        // Save the original client so we can restore it later.
+        originalClient = clientField.get(null) as OkHttpClient
 
-            // Build a new OkHttpClient that redirects RestClient requests to MockWebServer.
-            val testClient = OkHttpClient.Builder()
-                // Add an interceptor that rewrites each outgoing request URL.
-                .addInterceptor { chain ->
-                    // Capture the original outgoing request.
-                    val originalRequest = chain.request()
+        // Build a new OkHttpClient that redirects RestClient requests to MockWebServer.
+        val testClient = OkHttpClient.Builder()
+            // Add an interceptor that rewrites each outgoing request URL.
+            .addInterceptor { chain ->
+                // Capture the original outgoing request.
+                val originalRequest = chain.request()
 
-                    // Extract the original URL from the request.
-                    val originalUrl = originalRequest.url
+                // Extract the original URL from the request.
+                val originalUrl = originalRequest.url
 
-                    /*
-                     RestClient uses HTTPS in the real application, but MockWebServer
-                     runs over HTTP by default.
+                /*
+                 RestClient uses HTTPS in the real application, but MockWebServer
+                 runs over HTTP by default.
 
-                     Replace HTTPS with HTTP while keeping the original path and
-                     query parameters unchanged.
-                    */
-                    // Start building a replacement URL based on the original URL.
-                    val newUrl = originalUrl.newBuilder()
-                        // Change the URL scheme to HTTP because MockWebServer uses HTTP.
-                        .scheme("http")
-                        // Replace the original host with the MockWebServer host.
-                        .host(mockWebServer.hostName)
-                        // Replace the original port with the MockWebServer port.
-                        .port(mockWebServer.port)
-                        // Finish building the current OkHttp object.
-                        .build()
+                 Replace HTTPS with HTTP while keeping the original path and
+                 query parameters unchanged.
+                */
+                // Start building a replacement URL based on the original URL.
+                val newUrl = originalUrl.newBuilder()
+                    // Change the URL scheme to HTTP because MockWebServer uses HTTP.
+                    .scheme("http")
+                    // Replace the original host with the MockWebServer host.
+                    .host(mockWebServer.hostName)
+                    // Replace the original port with the MockWebServer port.
+                    .port(mockWebServer.port)
+                    // Finish building the current OkHttp object.
+                    .build()
 
-                    // Build a new request with the rewritten test URL.
-                    val newRequest = originalRequest.newBuilder()
-                        // Replace the original URL with the rewritten MockWebServer URL.
-                        .url(newUrl)
-                        // Finish building the current OkHttp object.
-                        .build()
+                // Build a new request with the rewritten MockWebServer URL.
+                val newRequest = originalRequest.newBuilder()
+                    // Replace the original URL.
+                    .url(newUrl)
+                    // Finish building the request.
+                    .build()
 
-                    // Send the request to MockWebServer.
-                    chain.proceed(newRequest)
-                    // Close the current block.
-                }
-                // Finish building the current OkHttp object.
-                .build()
+                // Send the request to MockWebServer.
+                chain.proceed(newRequest)
+            }
+            // Finish building the test client.
+            .build()
 
-            // Replace the client in RestClient with the test client.
-            clientField.set(null, testClient)
-            // Close the current block.
-        }
+        // Replace the client in RestClient with the test client.
+        clientField.set(null, testClient)
+    }
 
-        // -------------------------------------------------------------
-        // Cleanup after all tests.
-        // -------------------------------------------------------------
-        // Expose the following companion-object function as a JVM static method.
-        @JvmStatic
-        // Run the following cleanup function once after all tests.
-        @AfterClass
-        // Declare the class-level cleanup function.
-        fun tearDownClass() {
-            // Use reflection to get the client field in RestClient.
-            val clientField = RestClient::class.java.getDeclaredField("client")
+    // -------------------------------------------------------------
+    // Cleanup after each test.
+    // -------------------------------------------------------------
+    // Run the following cleanup function after every test.
+    @After
+    fun tearDown() {
+        // Use reflection to get the client field in RestClient.
+        val clientField = RestClient::class.java.getDeclaredField("client")
 
-            // Allow access to the private field.
-            clientField.isAccessible = true
+        // Allow access to the private field.
+        clientField.isAccessible = true
 
-            // Restore the original client instance back to RestClient.
+        // Restore the original client only if setup initialized it successfully.
+        if (::originalClient.isInitialized) {
             clientField.set(null, originalClient)
-
-            // Shut down the MockWebServer to free resources and port.
-            mockWebServer.shutdown()
-            // Close the current block.
         }
-        // Close the current block.
+
+        // Shut down MockWebServer only if setup initialized it successfully.
+        if (::mockWebServer.isInitialized) {
+            mockWebServer.shutdown()
+        }
     }
 
     // -------------------------------------------------------------
@@ -2310,5 +2297,4 @@ class RestClientTest {
         assertTrue(body.isEmpty())
         // Close the current block.
     }
-// Close the current block.
 }

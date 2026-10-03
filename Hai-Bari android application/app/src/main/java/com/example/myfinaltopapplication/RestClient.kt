@@ -70,7 +70,7 @@ object RestClient {
 
     // Reusable HTTP client for all network requests.
     // Built with an interceptor that prints detailed logs for each request and response.
-    private val client = OkHttpClient.Builder()
+    private var client = OkHttpClient.Builder()
         .addInterceptor { chain ->
             // Capture the outgoing request.
             val request = chain.request()

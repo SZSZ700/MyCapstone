@@ -36,7 +36,19 @@ android {
         unitTests.isIncludeAndroidResources = true
 
         unitTests.all {
-            it.jvmArgs("-XX:+EnableDynamicAgentLoading")
+            it.jvmArgs(
+                "-XX:+EnableDynamicAgentLoading",
+
+                "--add-opens=java.base/java.lang=ALL-UNNAMED",
+                "--add-opens=java.base/java.util=ALL-UNNAMED",
+                "--add-opens=java.base/java.io=ALL-UNNAMED",
+                "--add-opens=java.base/java.net=ALL-UNNAMED",
+                "--add-opens=java.base/java.security=ALL-UNNAMED",
+                "--add-opens=java.base/java.text=ALL-UNNAMED",
+                "--add-opens=java.base/jdk.internal.access=ALL-UNNAMED",
+                "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
+                "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED"
+            )
         }
     }
 }
@@ -57,6 +69,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockito.core)
+    testImplementation(libs.mockwebserver)
     // Provides ApplicationProvider for Robolectric JVM tests
     //noinspection UseTomlInstead
     testImplementation("androidx.test:core:1.7.0")
@@ -65,5 +78,4 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.espresso.core)
     androidTestImplementation(libs.androidx.runner)
-    androidTestImplementation(libs.mockwebserver)
 }
