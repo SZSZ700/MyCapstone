@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?><!-- suppress ALL -->
+<!--suppress XmlUnusedNamespaceDeclaration -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
@@ -70,11 +71,6 @@
         <receiver
             android:name=".WaterReminderReceiver"
             android:exported="false" />
-
-        <activity
-            android:name=".MainActivity2"
-            android:exported="false"
-            android:windowSoftInputMode="adjustResize" />
     </application>
 
 </manifest>
