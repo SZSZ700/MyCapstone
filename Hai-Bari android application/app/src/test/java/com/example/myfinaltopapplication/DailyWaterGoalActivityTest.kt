@@ -1,5 +1,6 @@
 package com.example.myfinaltopapplication
 // Android imports used in the Activity.
+import android.app.Activity
 import android.app.Application
 import android.os.Looper
 import android.widget.Button
@@ -9,6 +10,7 @@ import android.widget.TextView
 // JSON for fake server responses.
 import org.json.JSONObject
 // JUnit imports.
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -18,6 +20,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows
+import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowToast
 // Mockito.
@@ -43,20 +46,60 @@ import com.github.mikephil.charting.data.PieDataSet
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class DailyWaterGoalActivityTest {
-
     // -------------------------------------------------------------------------
     // Helper: store a username in SharedPreferences before creating the Activity.
     // -------------------------------------------------------------------------
     private fun putUserInPrefs(app: Application) {
         // Get SharedPreferences by name defined in strings.xml.
-        val prefs = app.getSharedPreferences(app.getString(R.string.myprefs), Application.MODE_PRIVATE)
+        val prefs = app.getSharedPreferences(
+            app.getString(R.string.myprefs),
+            Application.MODE_PRIVATE
+        )
 
         // Edit SharedPreferences to store current user.
         val editor = prefs.edit()
+
         // Store username.
         editor.putString(app.getString(R.string.currentuser), "john")
+
         // Save changes immediately.
         editor.commit()
+    }
+
+    // -------------------------------------------------------------------------
+    // Helper: keep every ActivityController created during the current test.
+    // -------------------------------------------------------------------------
+
+    // Hold ActivityControllers so every created Activity can be closed after the test.
+    private val activityControllers = mutableListOf<ActivityController<*>>()
+
+    // Build and start an Activity while keeping its controller for cleanup.
+    private fun <T : Activity> buildActivity(activityClass: Class<T>): T {
+        // Build the Activity and run its lifecycle through setup().
+        val controller = Robolectric.buildActivity(activityClass).setup()
+
+        // Save the controller so it can be closed after the test finishes.
+        activityControllers.add(controller)
+
+        // Return the actual Activity instance to the test.
+        return controller.get()
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup after each test.
+    // -------------------------------------------------------------------------
+
+    // Run cleanup after every test method.
+    @After
+    fun tearDownActivities() {
+        // Close controllers in reverse creation order.
+        activityControllers.asReversed().forEach { controller ->
+            // Destroy the Activity and release Robolectric resources.
+            controller.close()
+        }
+
+        // Remove controller references after cleanup.
+        activityControllers.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -75,8 +118,11 @@ class DailyWaterGoalActivityTest {
             putUserInPrefs(app)
 
             // Prepare minimal futures for initial fetchAndRender to avoid real calls.
-            val goalFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val goalFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
+
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
 
             // Stub getGoal for initial load.
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
@@ -89,13 +135,14 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(waterFuture)
 
             // Build and start DailyWaterGoal Activity.
-            val activity = Robolectric.buildActivity(DailyWaterGoal::class.java).setup().get()
+            val activity = buildActivity(DailyWaterGoal::class.java)
 
             // Run all pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Find goal input.
             val goalInput: EditText = activity.findViewById(R.id.goalInput)
+
             // Find save goal button.
             val saveGoalBtn: Button = activity.findViewById(R.id.saveGoalBtn)
 
@@ -113,6 +160,7 @@ class DailyWaterGoalActivityTest {
 
             // Assert Toast is shown.
             assertNotNull(toastText)
+
             // Assert message is the validation message.
             assertEquals("Enter a daily goal in ml", toastText.toString())
 
@@ -140,8 +188,11 @@ class DailyWaterGoalActivityTest {
             putUserInPrefs(app)
 
             // Minimal futures for fetchAndRender.
-            val goalFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val goalFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
+
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
 
             // Stub getGoal for "john".
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
@@ -154,13 +205,14 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(waterFuture)
 
             // Build Activity.
-            val activity = Robolectric.buildActivity(DailyWaterGoal::class.java).setup().get()
+            val activity = buildActivity(DailyWaterGoal::class.java)
 
             // Run pending tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Find goal input.
             val goalInput: EditText = activity.findViewById(R.id.goalInput)
+
             // Find save button.
             val saveGoalBtn: Button = activity.findViewById(R.id.saveGoalBtn)
 
@@ -178,6 +230,7 @@ class DailyWaterGoalActivityTest {
 
             // Assert Toast is shown.
             assertNotNull(toastText)
+
             // Assert Toast message.
             assertEquals("Goal must be a number", toastText.toString())
 
@@ -206,8 +259,11 @@ class DailyWaterGoalActivityTest {
             putUserInPrefs(app)
 
             // Minimal futures for initial load.
-            val goalFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val goalFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
+
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
 
             // Stub getGoal for "john".
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
@@ -220,13 +276,14 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(waterFuture)
 
             // Build Activity.
-            val activity = Robolectric.buildActivity(DailyWaterGoal::class.java).setup().get()
+            val activity = buildActivity(DailyWaterGoal::class.java)
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Find goal input.
             val goalInput: EditText = activity.findViewById(R.id.goalInput)
+
             // Find save button.
             val saveGoalBtn: Button = activity.findViewById(R.id.saveGoalBtn)
 
@@ -244,8 +301,12 @@ class DailyWaterGoalActivityTest {
 
             // Assert Toast is shown.
             assertNotNull(toastText)
+
             // Assert Toast message.
-            assertEquals("Goal should be between 500 and 10000 ml", toastText.toString())
+            assertEquals(
+                "Goal should be between 500 and 10000 ml",
+                toastText.toString()
+            )
 
             // Verify setGoal was not invoked.
             restClientMock.verify(
@@ -276,19 +337,25 @@ class DailyWaterGoalActivityTest {
 
             // Build fake JSON for initial goal.
             val goalJson = JSONObject()
+
             // Set initial goal to 3000 ml.
             goalJson.put("goalMl", 3000)
 
             // Build fake JSON for water: today=1000.
             val waterJson = JSONObject()
+
             // Set today's water amount.
             waterJson.put("todayWater", 1000)
+
             // Set yesterday's water amount.
             waterJson.put("yesterdayWater", 0)
 
             // Futures for initial fetchAndRender.
-            val goalFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(goalJson)
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(waterJson)
+            val goalFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(goalJson)
+
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(waterJson)
 
             // Stub getGoal for "john".
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
@@ -301,7 +368,8 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(waterFuture)
 
             // Stub setGoal("john", 2600) to succeed.
-            val setGoalFuture: CompletableFuture<Boolean> = CompletableFuture.completedFuture(true)
+            val setGoalFuture: CompletableFuture<Boolean> =
+                CompletableFuture.completedFuture(true)
 
             // Stub setGoal using Kotlin matchers.
             restClientMock.`when`<CompletableFuture<Boolean>> {
@@ -309,24 +377,29 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(setGoalFuture)
 
             // Build Activity.
-            val activity = Robolectric.buildActivity(DailyWaterGoal::class.java).setup().get()
+            val activity = buildActivity(DailyWaterGoal::class.java)
 
             // Run pending tasks (to apply initial fetchAndRender).
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Find goal input.
             val goalInput: EditText = activity.findViewById(R.id.goalInput)
+
             // Find save goal button.
             val saveGoalBtn: Button = activity.findViewById(R.id.saveGoalBtn)
+
             // Find goal label.
             val goalText: TextView = activity.findViewById(R.id.goalText)
+
             // Find today's water label.
             val todayText: TextView = activity.findViewById(R.id.todayText)
+
             // Find donut chart.
             val donutChart: PieChart = activity.findViewById(R.id.donutChart)
 
             // Assert initial goal label.
             assertEquals("Goal: 3,000 ml", goalText.text.toString())
+
             // Assert initial today label.
             assertEquals("Today: 1,000 ml", todayText.text.toString())
 
@@ -347,33 +420,40 @@ class DailyWaterGoalActivityTest {
 
             // Labels should now show updated goal.
             assertEquals("Goal: 2,600 ml", goalText.text.toString())
+
             // Today remains 1000.
             assertEquals("Today: 1,000 ml", todayText.text.toString())
 
             // Read donut center text.
             val centerText = donutChart.centerText.toString()
+
             // Check donut center text "1000 / 2600 ml".
             assertEquals("1,000 / 2,600 ml", centerText)
 
             // Get chart data.
             val data = donutChart.data
+
             // Assert data is not null.
             assertNotNull(data)
+
             // Assert data has 1 set.
             assertEquals(1, data.getDataSetCount())
 
             // Get first dataset.
             val set = data.getDataSetByIndex(0) as PieDataSet
+
             // Assert set has 2 entries.
             assertEquals(2, set.entryCount)
 
             // Get consumed entry.
             val consumed = set.getEntryForIndex(0)
+
             // Get remaining entry.
             val remaining = set.getEntryForIndex(1)
 
             // Assert consumed value.
             assertEquals(1000f, consumed.y, 0.001f)
+
             // Assert remaining value.
             assertEquals(1600f, remaining.y, 0.001f)
         }
@@ -397,9 +477,12 @@ class DailyWaterGoalActivityTest {
             putUserInPrefs(app)
 
             // Future for goal that returns null.
-            val goalFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(null)
+            val goalFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(null)
+
             // Future for water that returns null.
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(null)
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(null)
 
             // Stub getGoal for "john".
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
@@ -412,25 +495,29 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(waterFuture)
 
             // Build Activity.
-            val activity = Robolectric.buildActivity(DailyWaterGoal::class.java).setup().get()
+            val activity = buildActivity(DailyWaterGoal::class.java)
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
             // Find goal label.
             val goalText: TextView = activity.findViewById(R.id.goalText)
+
             // Find today's water label.
             val todayText: TextView = activity.findViewById(R.id.todayText)
+
             // Find donut chart.
             val donutChart: PieChart = activity.findViewById(R.id.donutChart)
 
             // Default goal should be 3000.
             assertEquals("Goal: 3,000 ml", goalText.text.toString())
+
             // Default today should be 0.
             assertEquals("Today: 0 ml", todayText.text.toString())
 
             // Read donut center text.
             val centerText = donutChart.centerText.toString()
+
             // Assert center text reflects 0 / 3000.
             assertEquals("0 / 3,000 ml", centerText)
         }
@@ -453,9 +540,12 @@ class DailyWaterGoalActivityTest {
             putUserInPrefs(app)
 
             // Minimal future for getGoal.
-            val goalFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val goalFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
+
             // Minimal future for getWater.
-            val waterFuture: CompletableFuture<JSONObject?> = CompletableFuture.completedFuture(JSONObject())
+            val waterFuture: CompletableFuture<JSONObject?> =
+                CompletableFuture.completedFuture(JSONObject())
 
             // Stub getGoal for "john".
             restClientMock.`when`<CompletableFuture<JSONObject?>> {
@@ -468,7 +558,7 @@ class DailyWaterGoalActivityTest {
             }.thenReturn(waterFuture)
 
             // Build Activity.
-            val activity = Robolectric.buildActivity(DailyWaterGoal::class.java).setup().get()
+            val activity = buildActivity(DailyWaterGoal::class.java)
 
             // Run pending tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -481,13 +571,18 @@ class DailyWaterGoalActivityTest {
 
             // Inspect next started Activity via ShadowActivity.
             val shadowActivity = Shadows.shadowOf(activity)
+
             // Get started Activity.
             val started = shadowActivity.nextStartedActivity
 
             // Assert navigation happened.
             assertNotNull(started)
+
             // Assert started Activity is HomePage.
-            assertEquals(HomePage::class.java.name, started.component!!.className)
+            assertEquals(
+                HomePage::class.java.name,
+                started.component!!.className
+            )
         }
     }
 }

@@ -7,6 +7,7 @@ import android.os.Looper
 // Import Android widget Button to access buttons from layout.
 import android.widget.Button
 // Import JUnit annotations.
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 // Import assertions.
@@ -15,6 +16,8 @@ import org.junit.Assert.assertNotNull
 // Import Robolectric test runner.
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+// Import Robolectric ActivityController for Activity lifecycle cleanup.
+import org.robolectric.android.controller.ActivityController
 // Import Robolectric configuration for SDK level.
 import org.robolectric.annotation.Config
 // Import Shadows helpers to inspect started Activities.
@@ -33,16 +36,38 @@ import org.robolectric.shadows.ShadowActivity
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class HomePageTest {
+    // -------------------------------------------------------------------------
+    // Hold all ActivityControllers created during the current test.
+    // -------------------------------------------------------------------------
+    private val activityControllers = mutableListOf<ActivityController<*>>()
 
     // -------------------------------------------------------------------------
     // Helper method: build a fully created HomePage activity.
     // -------------------------------------------------------------------------
     private fun buildActivity(): HomePage {
-        // Use Robolectric to build HomePage and call onCreate().
-        // Return created instance.
-        return Robolectric.buildActivity(HomePage::class.java)
-            .setup()
-            .get()
+        // Use Robolectric to build HomePage and run its lifecycle through setup().
+        val controller = Robolectric.buildActivity(HomePage::class.java).setup()
+
+        // Save the controller so the Activity can be closed after the test.
+        activityControllers.add(controller)
+
+        // Return the created HomePage instance.
+        return controller.get()
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup after every test.
+    // -------------------------------------------------------------------------
+    @After
+    fun tearDownActivities() {
+        // Close Activities in reverse creation order.
+        activityControllers.asReversed().forEach { controller ->
+            // Destroy the Activity and release Robolectric resources.
+            controller.close()
+        }
+
+        // Remove references after cleanup.
+        activityControllers.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -96,7 +121,10 @@ class HomePageTest {
         // Assert that an Activity was started.
         assertNotNull(startedIntent)
         // Assert that the Activity class is BMIActivity.
-        assertEquals(BMIActivity::class.java.name, startedIntent.component!!.className)
+        assertEquals(
+            BMIActivity::class.java.name,
+            startedIntent.component!!.className
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -123,7 +151,10 @@ class HomePageTest {
         // Assert that we navigated somewhere.
         assertNotNull(startedIntent)
         // Assert that target is WaterActivity.
-        assertEquals(WaterActivity::class.java.name, startedIntent.component!!.className)
+        assertEquals(
+            WaterActivity::class.java.name,
+            startedIntent.component!!.className
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -150,7 +181,10 @@ class HomePageTest {
         // Assert that an Activity was started.
         assertNotNull(startedIntent)
         // Assert that the Activity is WaterChartActivity.
-        assertEquals(WaterChartActivity::class.java.name, startedIntent.component!!.className)
+        assertEquals(
+            WaterChartActivity::class.java.name,
+            startedIntent.component!!.className
+        )
     }
 
     // -------------------------------------------------------------------------
@@ -177,6 +211,9 @@ class HomePageTest {
         // Assert that an Activity was started.
         assertNotNull(startedIntent)
         // Assert that destination is DailyWaterGoal.
-        assertEquals(DailyWaterGoal::class.java.name, startedIntent.component!!.className)
+        assertEquals(
+            DailyWaterGoal::class.java.name,
+            startedIntent.component!!.className
+        )
     }
 }

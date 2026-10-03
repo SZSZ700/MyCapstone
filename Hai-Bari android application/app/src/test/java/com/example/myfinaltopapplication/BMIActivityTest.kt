@@ -1,6 +1,6 @@
 package com.example.myfinaltopapplication
-
 // Android imports.
+import android.app.Activity
 import android.app.Application
 import android.os.Looper
 import android.widget.Button
@@ -14,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 // Robolectric imports.
@@ -21,6 +22,7 @@ import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows
+import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowToast
 // Mockito.
@@ -50,6 +52,38 @@ import com.github.mikephil.charting.data.PieDataSet
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class BMIActivityTest {
+
+    // Hold every ActivityController created by this test class so it can be closed after each test.
+    private val activityControllers = mutableListOf<ActivityController<*>>()
+
+    // -------------------------------------------------------------------------
+    // Helper: build an Activity and keep its controller for deterministic cleanup.
+    // -------------------------------------------------------------------------
+    private fun <T : Activity> buildActivity(activityClass: Class<T>): T {
+        // Build and fully start the Activity.
+        val controller = Robolectric.buildActivity(activityClass).setup()
+
+        // Save the controller so @After can close it even if the test exits early.
+        activityControllers.add(controller)
+
+        // Return the Activity instance used by the test.
+        return controller.get()
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup: close every ActivityController created during the current test.
+    // -------------------------------------------------------------------------
+    @After
+    fun tearDownActivities() {
+        // Close in reverse order in case one Activity started another Activity.
+        activityControllers.asReversed().forEach { controller ->
+            // Move the Activity through its final lifecycle cleanup.
+            controller.close()
+        }
+
+        // Remove references so the next test starts with an empty controller list.
+        activityControllers.clear()
+    }
 
     // -------------------------------------------------------------------------
     // Helper: store a username in SharedPreferences before creating the Activity.
@@ -84,7 +118,7 @@ class BMIActivityTest {
             val app = RuntimeEnvironment.getApplication()
 
             // Build BMIActivity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -155,7 +189,7 @@ class BMIActivityTest {
             }.thenReturn(distFuture)
 
             // Build BMIActivity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -240,7 +274,7 @@ class BMIActivityTest {
             }.thenReturn(CompletableFuture.completedFuture(true))
 
             // Build and start BMIActivity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Let initial async calls finish.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -346,7 +380,7 @@ class BMIActivityTest {
             }.thenReturn(CompletableFuture.completedFuture(true))
 
             // Build activity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Run pending tasks (initial futures).
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -436,7 +470,7 @@ class BMIActivityTest {
             }.thenReturn(CompletableFuture.completedFuture(true))
 
             // Build activity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Run pending tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -518,7 +552,7 @@ class BMIActivityTest {
             }.thenReturn(distFuture)
 
             // Build activity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Run pending tasks (including loadBmiDistributionChart).
             Shadows.shadowOf(Looper.getMainLooper()).idle()
@@ -606,7 +640,7 @@ class BMIActivityTest {
             }.thenReturn(distFuture)
 
             // Build activity.
-            val activity = Robolectric.buildActivity(BMIActivity::class.java).setup().get()
+            val activity = buildActivity(BMIActivity::class.java)
 
             // Run pending tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()

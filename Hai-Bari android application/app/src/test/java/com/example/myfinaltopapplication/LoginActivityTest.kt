@@ -11,6 +11,7 @@ import android.os.Looper
 import android.widget.Button
 import android.widget.EditText
 // Import JUnit annotations for tests.
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 // Import assertions from JUnit.
@@ -25,6 +26,8 @@ import org.mockito.kotlin.eq
 // Import Robolectric test runner.
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+// Import ActivityController so created Activities can be closed after each test.
+import org.robolectric.android.controller.ActivityController
 // Import Robolectric configuration annotation.
 import org.robolectric.annotation.Config
 // Import Robolectric Shadows helpers.
@@ -45,16 +48,37 @@ import java.util.concurrent.CompletableFuture
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class LoginActivityTest {
+    // Hold every ActivityController created during the current test.
+    private val activityControllers = mutableListOf<ActivityController<LoginActivity>>()
 
     // -------------------------------------------------------------------------
     // Helper method: create a fully set up LoginActivity instance.
     // -------------------------------------------------------------------------
     private fun buildActivity(): LoginActivity {
-        // Build the Activity using Robolectric and call onCreate().
-        // Return the created Activity instance.
-        return Robolectric.buildActivity(LoginActivity::class.java)
+        // Build the Activity using Robolectric and run its lifecycle through setup().
+        val controller = Robolectric.buildActivity(LoginActivity::class.java)
             .setup()
-            .get()
+
+        // Save the controller so the Activity can be closed after the test.
+        activityControllers.add(controller)
+
+        // Return the created Activity instance.
+        return controller.get()
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup after every test.
+    // -------------------------------------------------------------------------
+    @After
+    fun tearDownActivities() {
+        // Close Activities in reverse creation order.
+        activityControllers.asReversed().forEach { controller ->
+            // Destroy the Activity and release Robolectric resources.
+            controller.close()
+        }
+
+        // Remove controller references after cleanup.
+        activityControllers.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -185,11 +209,13 @@ class LoginActivityTest {
                 activity.getString(R.string.currentuser),
                 null
             )
+
             // Read stored age from SharedPreferences.
             val storedAge = prefs.getInt(
                 activity.getString(R.string.age),
                 -1
             )
+
             // Read stored fullName from SharedPreferences.
             val storedFullName = prefs.getString("fullName", null)
             // Read stored todayWater from SharedPreferences.
@@ -423,11 +449,13 @@ class LoginActivityTest {
                 activity.getString(R.string.currentuser),
                 null
             )
+
             // Read stored age.
             val storedAge = prefs.getInt(
                 activity.getString(R.string.age),
                 -1
             )
+
             // Read stored full name.
             val storedFullName = prefs.getString("fullName", null)
 

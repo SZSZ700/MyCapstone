@@ -4,6 +4,7 @@ import android.os.Looper
 import android.widget.Button
 import android.widget.EditText
 // Import JUnit annotations.
+import org.junit.After
 import org.junit.Test
 import org.junit.runner.RunWith
 // Import assertions.
@@ -17,6 +18,7 @@ import org.mockito.kotlin.any
 // Import Robolectric runner + config.
 import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.android.controller.ActivityController
 import org.robolectric.annotation.Config
 // Import Robolectric Shadows helpers.
 import org.robolectric.Shadows
@@ -33,16 +35,37 @@ import java.util.concurrent.CompletableFuture
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
 class SignupActivityTest {
+    // Hold every ActivityController created during the current test.
+    private val activityControllers = mutableListOf<ActivityController<signup>>()
 
     // -------------------------------------------------------------------------
     // Helper method: build signup Activity and run onCreate().
     // -------------------------------------------------------------------------
     private fun buildActivity(): signup {
-        // Build Activity instance with Robolectric and call lifecycle methods.
-        // Return created Activity instance.
-        return Robolectric.buildActivity(signup::class.java)
+        // Build Activity instance with Robolectric and run lifecycle methods.
+        val controller = Robolectric.buildActivity(signup::class.java)
             .setup()
-            .get()
+
+        // Save the controller so the Activity can be closed after the test.
+        activityControllers.add(controller)
+
+        // Return created Activity instance.
+        return controller.get()
+    }
+
+    // -------------------------------------------------------------------------
+    // Cleanup after every test.
+    // -------------------------------------------------------------------------
+    @After
+    fun tearDownActivities() {
+        // Close Activities in reverse creation order.
+        activityControllers.asReversed().forEach { controller ->
+            // Destroy the Activity and release Robolectric resources.
+            controller.close()
+        }
+
+        // Remove controller references after cleanup.
+        activityControllers.clear()
     }
 
     // -------------------------------------------------------------------------
@@ -76,15 +99,21 @@ class SignupActivityTest {
 
             // Click register button to trigger validation logic.
             registerButton.performClick()
+
             // Run pending UI tasks so Toast will be created.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
+
             // Read the latest Toast text.
             val toastText: CharSequence? = ShadowToast.getTextOfLatestToast()
 
             // Assert that Toast was shown.
             assertNotNull(toastText)
+
             // Assert that Toast message equals "fill_all_fields" string resource.
-            assertEquals(activity.getString(R.string.fill_all_fields), toastText.toString())
+            assertEquals(
+                activity.getString(R.string.fill_all_fields),
+                toastText.toString()
+            )
 
             // Verify that RestClient.register was NEVER called.
             restClientMock.verify(
@@ -137,6 +166,7 @@ class SignupActivityTest {
 
             // Click register button to trigger full signup flow.
             registerButton.performClick()
+
             // Run pending UI tasks (thenAccept + Toast + startActivity).
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
@@ -148,19 +178,25 @@ class SignupActivityTest {
 
             // Get ShadowActivity to inspect navigation.
             val shadowActivity = Shadows.shadowOf(activity)
+
             // Read started Activity Intent (should be LoginActivity).
             val startedIntent = shadowActivity.nextStartedActivity
 
             // Assert that we navigated to another Activity.
             assertNotNull(startedIntent)
+
             // Assert that the target Activity is LoginActivity.
-            assertEquals(LoginActivity::class.java.name, startedIntent.component!!.className)
+            assertEquals(
+                LoginActivity::class.java.name,
+                startedIntent.component!!.className
+            )
 
             // Read latest Toast text.
             val toastText: CharSequence? = ShadowToast.getTextOfLatestToast()
 
             // Assert that Toast was shown.
             assertNotNull(toastText)
+
             // Assert that Toast message equals "sign_up_succesfully".
             assertEquals(
                 activity.getString(R.string.sign_up_succesfully),
@@ -212,6 +248,7 @@ class SignupActivityTest {
 
             // Click register button.
             registerButton.performClick()
+
             // Run pending UI tasks.
             Shadows.shadowOf(Looper.getMainLooper()).idle()
 
@@ -235,6 +272,7 @@ class SignupActivityTest {
 
             // Assert that Toast was shown.
             assertNotNull(toastText)
+
             // Assert that Toast message equals "username_allready_exists".
             assertEquals(
                 activity.getString(R.string.username_allready_exists),
