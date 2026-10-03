@@ -4,9 +4,17 @@
 
 Hi-Bari is a full-stack health tracking application designed to monitor daily water intake, calculate BMI, manage daily water goals, track calories, and store user health data.
 
-The system combines an Android mobile client, a Spring Boot REST API, and MongoDB.
+The system combines:
 
-The backend has been refactored into separated controller, service, repository, configuration, DTO, security, and exception-handling layers so that HTTP handling, business logic, authentication, and MongoDB access are not mixed together.
+- A Kotlin Android mobile application
+- A Kotlin Spring Boot REST API
+- MongoDB
+
+The backend follows a layered architecture with separated controller, service, repository, configuration, DTO, security, and exception-handling components.
+
+Android communicates only with the Spring Boot REST API.
+
+The Android application does not access MongoDB directly.
 
 Communication between the Android application and the Spring Boot backend uses HTTPS/TLS.
 
@@ -14,18 +22,29 @@ Communication between the Android application and the Spring Boot backend uses H
 
 ## 🎥 Application Demo
 
-Click the demo image in the repository to watch a short demonstration of the Hi-Bari Android application.
+Click the demo image in the Android project README to watch a short demonstration of the Hi-Bari application.
 
 ---
 
 ## 🗂 Repository Structure
 
-The repository contains two main projects: the Android client and the Spring Boot backend.
+The repository contains two main projects:
 
-The tree below focuses on the source files and configuration that are relevant to the application. Generated build output, IDE metadata, and Gradle/Maven caches are intentionally omitted.
+- Android client
+- Spring Boot backend
+
+The project root is:
 
 ```text
-MyPrivatePractice/
+MyCapstone/
+```
+
+The tree below focuses on application source files, tests, and relevant configuration.
+
+Generated output such as `.gradle/`, `.idea/`, `build/`, and `target/` is intentionally omitted.
+
+```text
+MyCapstone/
 ├── README.md
 │
 ├── Hai-Bari android application/
@@ -55,17 +74,17 @@ MyPrivatePractice/
 │           │   │
 │           │   ├── java/
 │           │   │   └── com/example/myfinaltopapplication/
-│           │   │       ├── BMIActivity.java
-│           │   │       ├── DailyWaterGoal.java
-│           │   │       ├── HomePage.java
-│           │   │       ├── LoginActivity.java
-│           │   │       ├── MainActivity.java
-│           │   │       ├── RestClient.java
-│           │   │       ├── signup.java
-│           │   │       ├── User.java
-│           │   │       ├── WaterActivity.java
-│           │   │       ├── WaterChartActivity.java
-│           │   │       └── WaterReminderReceiver.java
+│           │   │       ├── BMIActivity.kt
+│           │   │       ├── DailyWaterGoal.kt
+│           │   │       ├── HomePage.kt
+│           │   │       ├── LoginActivity.kt
+│           │   │       ├── MainActivity.kt
+│           │   │       ├── RestClient.kt
+│           │   │       ├── signup.kt
+│           │   │       ├── User.kt
+│           │   │       ├── WaterActivity.kt
+│           │   │       ├── WaterChartActivity.kt
+│           │   │       └── WaterReminderReceiver.kt
 │           │   │
 │           │   └── res/
 │           │       ├── drawable/
@@ -88,8 +107,6 @@ MyPrivatePractice/
 │           │       │   └── activity_water_chart.xml
 │           │       │
 │           │       ├── mipmap-anydpi-v26/
-│           │       │   ├── ic_launcher.xml
-│           │       │   └── ic_launcher_round.xml
 │           │       ├── mipmap-hdpi/
 │           │       ├── mipmap-mdpi/
 │           │       ├── mipmap-xhdpi/
@@ -114,74 +131,76 @@ MyPrivatePractice/
 │           │           └── network_security_config.xml
 │           │
 │           ├── test/
-│           │   └── java/com/example/myfinaltopapplication/
-│           │       ├── BMIActivityTest.java
-│           │       ├── DailyWaterGoalActivityTest.java
-│           │       ├── ExampleUnitTest.java
-│           │       ├── HomePageTest.java
-│           │       ├── LoginActivityTest.java
-│           │       ├── SignupActivityTest.java
-│           │       ├── WaterActivityTest.java
-│           │       └── WaterChartActivityTest.java
+│           │   └── java/
+│           │       └── com/example/myfinaltopapplication/
+│           │           ├── BMIActivityTest.kt
+│           │           ├── DailyWaterGoalActivityTest.kt
+│           │           ├── HomePageTest.kt
+│           │           ├── LoginActivityTest.kt
+│           │           ├── RestClientTest.kt
+│           │           ├── SignupActivityTest.kt
+│           │           ├── WaterActivityTest.kt
+│           │           └── WaterChartActivityTest.kt
 │           │
 │           └── androidTest/
-│               └── java/com/example/myfinaltopapplication/
-│                   ├── ExampleInstrumentedTest.java
-│                   └── RestClientTest.java
+│               └── java/
+│                   └── (currently empty)
 │
 └── Spring Server/
     ├── README.md
+    ├── .gitignore
     ├── pom.xml
+    │
     └── src/
         ├── main/
         │   ├── java/
         │   │   └── org/example/CapstoneProject/
-        │   │       ├── Application.java
+        │   │       ├── Application.kt
         │   │       │
-        │   │       ├── configuration/
-        │   │       │   ├── MongoConfiguration.java
-        │   │       │   └── PasswordConfiguration.java
+        │   │       ├── config/
+        │   │       │   ├── MongoConfiguration.kt
+        │   │       │   └── PasswordConfiguration.kt
         │   │       │
         │   │       ├── EnvConfiguration/
-        │   │       │   └── EnvConfig.java
+        │   │       │   └── EnvConfig.kt
         │   │       │
         │   │       ├── dto/
-        │   │       │   ├── LoginRequest.java
-        │   │       │   ├── LoginResponse.java
-        │   │       │   ├── SignupRequest.java
-        │   │       │   ├── UpdateUserRequest.java
-        │   │       │   ├── UserResponse.java
-        │   │       │   ├── WaterResponse.java
-        │   │       │   ├── GoalResponse.java
-        │   │       │   ├── GoalUpdateResponse.java
-        │   │       │   └── CaloriesResponse.java
+        │   │       │   ├── CaloriesResponse.kt
+        │   │       │   ├── GoalResponse.kt
+        │   │       │   ├── GoalUpdateResponse.kt
+        │   │       │   ├── LoginRequest.kt
+        │   │       │   ├── LoginResponse.kt
+        │   │       │   ├── SignupRequest.kt
+        │   │       │   ├── UserResponse.kt
+        │   │       │   └── WaterResponse.kt
         │   │       │
         │   │       ├── exception/
-        │   │       │   └── GlobalExceptionHandler.java
+        │   │       │   └── GlobalExceptionHandler.kt
         │   │       │
         │   │       ├── model/
-        │   │       │   └── User.java
+        │   │       │   └── User.kt
         │   │       │
         │   │       ├── repository/
-        │   │       │   ├── UserRepository.java
-        │   │       │   ├── WaterRepository.java
+        │   │       │   ├── UserRepository.kt
+        │   │       │   ├── WaterRepository.kt
+        │   │       │   │
         │   │       │   └── mongo/
-        │   │       │       ├── MongoUserRepository.java
-        │   │       │       └── MongoWaterRepository.java
+        │   │       │       ├── MongoUserRepository.kt
+        │   │       │       └── MongoWaterRepository.kt
         │   │       │
         │   │       ├── security/
-        │   │       │   └── JwtAuthenticationFilter.java
+        │   │       │   └── JwtAuthenticationFilter.kt
         │   │       │
         │   │       ├── service/
-        │   │       │   ├── AuthenticationService.java
-        │   │       │   ├── JwtService.java
-        │   │       │   ├── UserService.java
-        │   │       │   ├── WaterService.java
-        │   │       │   ├── UserHealthService.java
-        │   │       │   └── StatisticsService.java
+        │   │       │   ├── AuthenticationService.kt
+        │   │       │   ├── JwtService.kt
+        │   │       │   ├── StatisticsService.kt
+        │   │       │   ├── UserHealthService.kt
+        │   │       │   ├── UserService.kt
+        │   │       │   └── WaterService.kt
         │   │       │
         │   │       └── web/
-        │   │           └── UsersController.java
+        │   │           └── UsersController.kt
         │   │
         │   └── resources/
         │       ├── application.properties
@@ -190,26 +209,62 @@ MyPrivatePractice/
         └── test/
             └── java/
                 └── CapstoneTests/
-                    ├── CapstoneServicesIntegrationTest.java
-                    ├── UsersControllerIntegrationTest.java
-                    └── JwtServiceTest.java
+                    ├── CapstoneServicesIntegrationTest.kt
+                    ├── JwtServiceTest.kt
+                    └── UsersControllerIntegrationTest.kt
 ```
 
-> `application.properties`, `.env`, and `keystore.p12` contain local backend configuration and must be handled as local/sensitive configuration where appropriate.
+> Both projects are written in Kotlin. The directory names `src/main/java` and `src/test/java` are source-set directory names only. There are no `.java` source files in either project.
 
-> Generated directories such as `.gradle/`, `.idea/`, `build/`, `target/`, and other IDE/build artifacts are intentionally not shown in this tree.
+> Local or generated directories such as `.gradle/`, `.idea/`, `build/`, and `target/` are intentionally omitted from the structure above.
 
 ---
 
 ## 📱 Hai-Bari Android Application
 
-Contains the Android client, user interface, session handling, water tracking, BMI calculation, charts, daily water goal management, calorie-related interaction, and HTTPS communication with the backend through OkHttp.
+The Android project contains the mobile client.
+
+It is responsible for:
+
+- User interface
+- Signup
+- Login
+- Local session handling
+- JWT persistence
+- BMI calculation and tracking
+- Calories tracking
+- Daily water tracking
+- Daily water goals
+- Water history
+- Weekly water statistics
+- Charts
+- Water reminder notifications
+- HTTPS REST communication
+
+The Android project is implemented entirely in Kotlin.
 
 ---
 
 ## 🌐 Spring Server
 
-Contains the Spring Boot REST API, service layer, repository abstraction, MongoDB repository implementations, request/response DTOs, authentication, authorization, validation, centralized exception handling, HTTPS configuration, MongoDB transactions, upsert operations, and concurrency-safe database operations.
+The Spring Server is a Kotlin Spring Boot backend.
+
+It is responsible for:
+
+- REST API endpoints
+- Authentication
+- Authorization
+- JWT generation and validation
+- BCrypt password hashing
+- Validation
+- Business logic
+- MongoDB persistence
+- Transactions
+- Repository abstraction
+- HTTPS/TLS
+- Centralized exception handling
+
+The server is also implemented entirely in Kotlin.
 
 ---
 
@@ -220,7 +275,7 @@ The system follows a layered client-server architecture:
 ```text
 Android Application
         ↓
-      HTTPS
+     HTTPS/TLS
         ↓
 Spring Boot REST API
         ↓
@@ -237,209 +292,300 @@ MongoDB Repository Implementations
 MongoDB
 ```
 
-The backend flow is:
+Backend request flow:
 
 ```text
-HTTP Request over TLS
+HTTP Request
         ↓
-Security Filter
+TLS
         ↓
-Controller
+JwtAuthenticationFilter
         ↓
-Service
+UsersController
+        ↓
+Service Layer
         ↓
 Repository Interface
         ↓
-MongoDB Repository Implementation
+MongoDB Repository
         ↓
 MongoDB
 ```
 
-This separation keeps MongoDB-specific code out of the controller and service layers and keeps authentication logic outside the controller methods.
+The Android application never communicates directly with MongoDB.
 
 ---
 
-## 📱 Android Client
+# 📱 Android Client
 
-- Java-based Android application
-- Uses OkHttp for REST communication
-- Communicates with the Spring Boot backend over HTTPS
-- Stores local session data and the JWT in SharedPreferences
-- Restores the saved JWT when the application starts
-- Sends `Authorization: Bearer <token>` on protected API requests
-- Uses a local development certificate for the emulator HTTPS connection
-- Uses Android Network Security Configuration to control certificate trust and cleartext traffic
-- Uses MPAndroidChart for data visualization
-- Sends and receives JSON through the Spring Boot REST API
-- Does not contain MongoDB credentials
-- Does not contain the Spring Boot server private key
+## Technology
 
-Main application areas include:
+The Android application uses:
 
-- Login
-- Signup
-- Home page
-- Water tracking
-- BMI tracking
-- Water history and charts
-- Daily water goal management
-- Calories
+- Kotlin
+- Android SDK
+- Android Gradle Plugin 9.4.1
+- Gradle 9.6.1
+- Gradle Kotlin DSL
+- AndroidX
+- OkHttp
+- SharedPreferences
+- MPAndroidChart
+
+Android configuration:
+
+```text
+compileSdk = 37
+targetSdk  = 37
+minSdk     = 24
+```
+
+The project is configured for JVM 17 compatibility.
+
+Kotlin support is provided through the Android Gradle Plugin's built-in Kotlin support.
 
 ---
 
-## 🌐 Backend – Spring Boot
+## Android Application Components
 
-The backend is divided into dedicated layers.
+Main Kotlin classes:
 
-### Controller Layer
+```text
+BMIActivity.kt
+DailyWaterGoal.kt
+HomePage.kt
+LoginActivity.kt
+MainActivity.kt
+RestClient.kt
+signup.kt
+User.kt
+WaterActivity.kt
+WaterChartActivity.kt
+WaterReminderReceiver.kt
+```
+
+---
+
+## REST Communication
+
+`RestClient.kt` is responsible for communication with the backend.
+
+The Android emulator backend URL is:
+
+```text
+https://10.0.2.2:8443/myapp/api/users
+```
+
+The Android application uses OkHttp.
+
+Protected requests send:
+
+```http
+Authorization: Bearer <JWT>
+```
+
+The JWT returned by a successful login is stored by the application and reused for protected requests.
+
+---
+
+## HTTPS and Certificate Trust
+
+The Spring Boot backend uses HTTPS locally.
+
+Android trusts the local development certificate:
+
+```text
+app/src/main/res/raw/hibari_local.crt
+```
+
+Network Security Configuration:
+
+```text
+app/src/main/res/xml/network_security_config.xml
+```
+
+The configuration keeps the real emulator backend connection on HTTPS:
+
+```text
+10.0.2.2
+```
+
+The locally trusted certificate is used for this endpoint.
+
+Cleartext traffic is disabled by default.
+
+The current network configuration permits HTTP for:
+
+```text
+localhost
+```
+
+This allows local MockWebServer communication during JVM REST tests.
+
+---
+
+# 🌐 Backend – Spring Boot
+
+The backend is implemented in Kotlin.
+
+## Controller Layer
 
 ```text
 web/
-└── UsersController.java
+└── UsersController.kt
 ```
 
 Responsibilities:
 
 - Defines REST endpoints
-- Reads path variables, query parameters, and request bodies
-- Converts service results into HTTP responses
-- Uses request and response DTOs
+- Reads path variables
+- Reads request parameters
+- Reads request bodies
+- Calls service-layer operations
+- Builds HTTP responses
+- Uses DTOs
 - Does not access MongoDB directly
 
 ---
 
-### Service Layer
+## Service Layer
 
 ```text
 service/
-├── AuthenticationService.java
-├── JwtService.java
-├── UserService.java
-├── WaterService.java
-├── UserHealthService.java
-└── StatisticsService.java
+├── AuthenticationService.kt
+├── JwtService.kt
+├── StatisticsService.kt
+├── UserHealthService.kt
+├── UserService.kt
+└── WaterService.kt
 ```
 
-Responsibilities:
+Responsibilities include:
 
-- Coordinates application operations
-- Contains domain-oriented service logic
-- Handles authentication-related application flow
-- Hashes passwords before persistence
-- Performs PATCH type validation where required
-- Delegates persistence operations to repository interfaces
-- Does not contain MongoDB-specific database commands
+- Authentication flow
+- User operations
+- Water operations
+- BMI operations
+- Goal operations
+- Calories operations
+- Statistics
+- JWT operations
+- Business validation
+
+The service layer depends on repository interfaces rather than MongoDB-specific repository classes.
 
 ---
 
-### Security Layer
+## Security Layer
 
 ```text
 security/
-└── JwtAuthenticationFilter.java
+└── JwtAuthenticationFilter.kt
 
 service/
-└── JwtService.java
+└── JwtService.kt
 ```
 
-Responsibilities:
+The security layer handles:
 
-- Generates signed JWT access tokens after successful login
-- Validates JWT signatures and expiration
-- Extracts the authenticated username from the token subject
-- Protects user-specific endpoints before requests reach the controller
-- Returns `401 Unauthorized` for missing or invalid tokens
-- Returns `403 Forbidden` when a valid token is used for a different username
-- Keeps signup, login, health, and BMI distribution endpoints public
+- JWT generation
+- JWT signature validation
+- JWT expiration validation
+- Username extraction from the JWT subject
+- Bearer authentication
+- User-specific authorization
+
+Protected requests use:
+
+```http
+Authorization: Bearer <JWT>
+```
+
+Missing or invalid authentication is rejected.
+
+A valid token cannot be used to access another user's protected URL.
 
 ---
 
-### Repository Layer
+## Repository Layer
+
+Repository interfaces:
 
 ```text
 repository/
-├── UserRepository.java
-├── WaterRepository.java
-└── mongo/
-    ├── MongoUserRepository.java
-    └── MongoWaterRepository.java
+├── UserRepository.kt
+└── WaterRepository.kt
 ```
 
-Responsibilities:
-
-- Defines persistence contracts through interfaces
-- Contains MongoDB-specific operations only in MongoDB repository implementations
-- Uses the synchronous MongoDB Java Driver
-- Wraps blocking database work with `CompletableFuture.supplyAsync(...)`
-- Handles MongoDB reads, writes, filters, updates, deletes, upserts, and transactions
-- Handles transaction-based concurrency protection
-- Converts MongoDB `Document` objects into application models
-
----
-
-### Configuration Layer
+MongoDB implementations:
 
 ```text
-configuration/
-├── MongoConfiguration.java
-└── PasswordConfiguration.java
-
-EnvConfiguration/
-└── EnvConfig.java
+repository/mongo/
+├── MongoUserRepository.kt
+└── MongoWaterRepository.kt
 ```
 
-Responsibilities:
-
-- Creates the shared `MongoClient` Spring bean
-- Creates the shared `MongoDatabase` Spring bean
-- Provides the BCrypt `PasswordEncoder` bean
-- Loads MongoDB and JWT-related environment configuration
-- Uses constructor-based dependency injection throughout the application
-- Loads the local HTTPS keystore through Spring Boot configuration
-
-MongoDB configuration is loaded from `.env`:
-
-```env
-mongodb.uri=mongodb://localhost:27017/?replicaSet=rs0
-mongodb.database=hibari_db
-```
-
-JWT configuration is also loaded from `.env`:
-
-```env
-JWT_SECRET=<local-secret>
-```
+This separates application logic from database-specific implementation details.
 
 ---
 
-### DTO Layer
+## Configuration Layer
+
+```text
+config/
+├── MongoConfiguration.kt
+└── PasswordConfiguration.kt
+
+EnvConfiguration/
+└── EnvConfig.kt
+```
+
+`MongoConfiguration` creates shared MongoDB dependencies:
+
+```text
+MongoClient
+MongoDatabase
+```
+
+MongoDB configuration is loaded through `EnvConfig`.
+
+Environment keys include:
+
+```text
+mongodb.uri
+mongodb.database
+JWT_SECRET
+```
+
+`PasswordConfiguration` provides BCrypt password encoding.
+
+---
+
+## DTO Layer
 
 ```text
 dto/
-├── LoginRequest.java
-├── LoginResponse.java
-├── SignupRequest.java
-├── UpdateUserRequest.java
-├── UserResponse.java
-├── WaterResponse.java
-├── GoalResponse.java
-├── GoalUpdateResponse.java
-└── CaloriesResponse.java
+├── CaloriesResponse.kt
+├── GoalResponse.kt
+├── GoalUpdateResponse.kt
+├── LoginRequest.kt
+├── LoginResponse.kt
+├── SignupRequest.kt
+├── UserResponse.kt
+└── WaterResponse.kt
 ```
 
-DTOs separate the REST API contract from the internal `User` persistence model.
+DTOs separate the REST API contract from internal persistence models.
 
-Request DTOs are used for incoming JSON, while response DTOs define stable JSON structures returned to the Android client.
-
-`LoginResponse` returns the generated JWT together with public user data.
-
-Passwords are not exposed in user-related response DTOs.
+Passwords are not exposed in user response DTOs.
 
 ---
 
-## ✅ Validation and Exception Handling
+## Validation and Exception Handling
 
-Request validation uses Jakarta Bean Validation:
+The backend uses Jakarta Bean Validation.
+
+Examples include:
 
 ```text
 @Valid
@@ -447,52 +593,20 @@ Request validation uses Jakarta Bean Validation:
 @Min
 ```
 
-Validation failures are handled centrally by:
+Validation errors are handled centrally through:
 
 ```text
 exception/
-└── GlobalExceptionHandler.java
+└── GlobalExceptionHandler.kt
 ```
 
-Example validation response:
-
-```json
-{
-  "errors": {
-    "userName": "Username is required",
-    "password": "Password is required"
-  }
-}
-```
-
-Dynamic PATCH requests are additionally validated before values reach MongoDB.
-
-Supported PATCH field types include:
-
-```text
-password -> String
-fullName -> String
-age      -> Number
-bmi      -> Number
-```
-
-For example, a request such as:
-
-```json
-{
-  "password": 123
-}
-```
-
-is rejected instead of allowing MongoDB to store an invalid BSON type in `passwordHash`.
-
-Manual validation errors are returned as HTTP `400 Bad Request`.
+This avoids repeating validation-response logic inside controller methods.
 
 ---
 
-## 🍃 MongoDB Database
+# 🍃 MongoDB Database
 
-Hi-Bari uses MongoDB as its persistence database.
+MongoDB is the persistence database used by the backend.
 
 The local development database is:
 
@@ -500,9 +614,7 @@ The local development database is:
 hibari_db
 ```
 
-The backend uses the official synchronous MongoDB Java Driver.
-
-The application currently uses four main collections:
+The database contains four primary collections:
 
 ```text
 users
@@ -511,35 +623,51 @@ calories
 goals
 ```
 
+Relationships between collections use MongoDB `ObjectId` values.
+
 ---
 
-### `users`
+## `users`
 
-Example document:
+Example structure:
 
 ```json
 {
   "_id": "ObjectId(...)",
-  "username": "sharbel",
+  "username": "exampleUser",
   "passwordHash": "$2a$...",
-  "fullName": "Sharbel Zarzour",
+  "fullName": "Example User",
   "age": 25,
   "bmi": 22.4,
   "transactionVersion": 0
 }
 ```
 
-The `username` is protected by a unique MongoDB index.
+Important fields:
 
-The stored password value is a BCrypt hash rather than the user's raw plaintext password.
+```text
+_id
+username
+passwordHash
+fullName
+age
+bmi
+transactionVersion
+```
 
-`transactionVersion` is incremented by transaction-based operations that need to coordinate concurrent writes affecting the same user.
+`passwordHash` contains the BCrypt password hash.
+
+Raw passwords are not intentionally stored in MongoDB.
+
+`transactionVersion` is used as a common write point during transactional operations.
 
 ---
 
-### `water_records`
+## `water_records`
 
-Each drink is stored as a separate document:
+Each water intake entry is stored as an individual document.
+
+Example:
 
 ```json
 {
@@ -550,58 +678,67 @@ Each drink is stored as a separate document:
 }
 ```
 
-Each drink remains independent instead of being appended to a fixed-size array.
+This allows the server to calculate:
 
-This allows the backend to calculate:
+- Daily water totals
+- Yesterday's total
+- Historical water data
+- Weekly averages
+- Individual drink history
 
-- daily totals,
-- daily history,
-- individual drink entries,
-- weekly averages.
+There is no fixed number of water records per day.
 
 ---
 
-### `calories`
+## `calories`
 
-Daily calories are stored as:
+Calories are stored by user and date.
+
+Example:
 
 ```json
 {
   "_id": "ObjectId(...)",
   "userId": "ObjectId(...)",
   "calories": 2400,
-  "recordDate": "2026-09-13"
+  "recordDate": "yyyy-MM-dd"
 }
 ```
 
-One calories document is allowed per user per date.
+Only one calorie document is allowed per user and date.
 
-Today's calories are stored using MongoDB `upsert`.
+Today's calories are stored using MongoDB upsert behavior.
 
 ---
 
-### `goals`
+## `goals`
 
-Daily water goals are stored as:
+Daily water goals are stored by user and date.
+
+Example:
 
 ```json
 {
   "_id": "ObjectId(...)",
   "userId": "ObjectId(...)",
   "goalMl": 3000,
-  "recordDate": "2026-09-13"
+  "recordDate": "yyyy-MM-dd"
 }
 ```
 
-Older goal documents remain stored as history.
+Only one goal document is allowed per user and date.
 
-Today's goal is stored using MongoDB `upsert`.
+Historical goal documents remain stored.
+
+Today's goal is stored using MongoDB upsert behavior.
 
 ---
 
-## 🔍 MongoDB Indexes
+## MongoDB Indexes
 
-The database uses indexes for uniqueness and query performance.
+The database design uses the following indexes.
+
+### Unique username
 
 ```javascript
 db.users.createIndex(
@@ -610,11 +747,19 @@ db.users.createIndex(
 )
 ```
 
+This prevents duplicate usernames, including concurrent signup attempts.
+
+### Water history
+
 ```javascript
 db.water_records.createIndex(
     { userId: 1, recordedAt: 1 }
 )
 ```
+
+This supports time-range queries for water history.
+
+### Calories
 
 ```javascript
 db.calories.createIndex(
@@ -623,6 +768,10 @@ db.calories.createIndex(
 )
 ```
 
+This guarantees one calorie document per user per day.
+
+### Goals
+
 ```javascript
 db.goals.createIndex(
     { userId: 1, recordDate: 1 },
@@ -630,326 +779,167 @@ db.goals.createIndex(
 )
 ```
 
-The unique username index prevents duplicate users even when concurrent signup requests occur.
-
-The unique calorie and goal indexes guarantee at most one document per user and date.
+This guarantees one goal document per user per day.
 
 ---
 
-## 🔄 Data Flow – Water Update
+## MongoDB Transactions
 
-1. The user presses an Add Water button.
-2. The Android application creates an HTTPS PATCH request.
-3. The saved JWT is added to the `Authorization` header.
-4. TLS protects the request while it travels between Android and Spring Boot.
-5. `JwtAuthenticationFilter` validates the token and verifies that the token subject matches the username in the URL.
-6. `UsersController` receives the authorized request.
-7. `WaterService` handles the water-related application flow.
-8. `WaterRepository` defines the required persistence operation.
-9. `MongoWaterRepository` starts a MongoDB transaction.
-10. The user's `transactionVersion` is incremented inside the transaction.
-11. A new document is inserted into `water_records`.
-12. The transaction is committed.
-13. The result travels back through the repository, service, and controller.
-14. The response returns to the Android application through HTTPS.
+The backend uses MongoDB transactions for operations that modify multiple related documents.
 
-```text
-User Action
-    ↓
-Android Application
-    ↓
-HTTPS / TLS
-    ↓
-Authorization: Bearer <JWT>
-    ↓
-PATCH /api/users/{username}/water
-    ↓
-JwtAuthenticationFilter
-    ↓
-UsersController
-    ↓
-WaterService
-    ↓
-WaterRepository
-    ↓
-MongoWaterRepository
-    ↓
-MongoDB Transaction
-    ↓
-users.transactionVersion increment
-    ↓
-water_records.insertOne(...)
-    ↓
-Transaction Commit
-    ↓
-HTTPS Response to Android
-```
+Examples include:
+
+- User-related writes
+- Water updates
+- Calories updates
+- Goal updates
+- User deletion with related records
+
+Repositories create a MongoDB client session and execute related operations inside a transaction.
+
+This helps prevent inconsistent data when concurrent requests occur.
 
 ---
 
-## ⚙️ Advanced Implementation
+## MongoDB Replica Set
 
-### 🔹 Repository Abstraction
+MongoDB multi-document transactions require a replica set.
 
-Database access is defined through repository interfaces:
-
-```text
-UserRepository
-WaterRepository
-```
-
-The current persistence implementations are MongoDB-based:
-
-```text
-MongoUserRepository
-MongoWaterRepository
-```
-
-This keeps higher layers independent from MongoDB-specific APIs.
-
----
-
-### 🔹 Constructor Dependency Injection
-
-Services and repositories are injected using constructors.
-
-This makes dependencies explicit and avoids direct object creation inside controllers.
-
----
-
-### 🔹 Asynchronous Backend Operations
-
-The project uses the synchronous MongoDB Java Driver.
-
-Blocking repository work is wrapped with:
-
-```java
-CompletableFuture.supplyAsync(...)
-```
-
-This preserves the application's existing asynchronous service and controller contracts.
-
----
-
-### 🔹 MongoDB Transactions
-
-Operations that coordinate data across multiple documents or collections use MongoDB transactions.
-
-Transaction-based operations include:
-
-```text
-deleteByUsername()
-updateWater()
-updateCalories()
-updateGoalMl()
-```
-
-The repositories use the user document as a shared concurrency point through:
-
-```text
-transactionVersion
-```
-
-Conceptually:
-
-```text
-Transaction starts
-        ↓
-Find user
-        ↓
-Increment transactionVersion
-        ↓
-Perform related database operation
-        ↓
-Commit
-```
-
-This helps prevent races such as:
-
-```text
-Delete user
-        ↕
-Insert related water/calorie/goal data
-```
-
----
-
-### 🔹 `withTransaction(...)`
-
-MongoDB's convenient transaction API can be used:
-
-```java
-session.withTransaction(() -> {
-    // transactional MongoDB operations
-    return true;
-});
-```
-
-`withTransaction(...)` manages transaction start, commit, abort behavior, and retry handling for eligible transient transaction errors.
-
-Every MongoDB command that belongs to the transaction receives the same `ClientSession`.
-
-Example:
-
-```java
-waterRecords.insertOne(
-        session,
-        document
-);
-```
-
----
-
-### 🔹 MongoDB Upsert
-
-Calories and daily goals use MongoDB `upsert`.
-
-For calories:
-
-```javascript
-db.calories.updateOne(
-    {
-        userId: userId,
-        recordDate: today
-    },
-    {
-        $set: {
-            calories: caloriesValue
-        }
-    },
-    {
-        upsert: true
-    }
-)
-```
-
-Behavior:
-
-```text
-Today's document exists
-        ↓
-Update it
-
-Today's document does not exist
-        ↓
-Insert it
-```
-
-For goals:
-
-```javascript
-db.goals.updateOne(
-    {
-        userId: userId,
-        recordDate: today
-    },
-    {
-        $set: {
-            goalMl: goalMl
-        }
-    },
-    {
-        upsert: true
-    }
-)
-```
-
-This removes the need for a separate:
-
-```text
-find
- ↓
-insert or update
-```
-
-sequence.
-
-Water does not use upsert because every drink should remain a separate document.
-
----
-
-### 🔹 MongoDB Replica Set
-
-MongoDB transactions require a replica set.
-
-The local development environment uses a single-node replica set:
+Local development uses a single-node replica set:
 
 ```text
 rs0
 ```
 
-MongoDB configuration:
-
-```yaml
-replication:
-  replSetName: rs0
-```
-
-Connection URI:
+Example local MongoDB URI:
 
 ```text
 mongodb://localhost:27017/?replicaSet=rs0
 ```
 
-The local node operates as:
+Typical initialization:
+
+```javascript
+rs.initiate()
+```
+
+A healthy local node should become:
 
 ```text
 PRIMARY
 ```
 
-This enables MongoDB transaction support while using only one local MongoDB server.
+---
+
+## Asynchronous Repository Contracts
+
+The MongoDB driver used by the project performs synchronous database operations.
+
+Repository methods preserve asynchronous application contracts by wrapping work in:
+
+```kotlin
+CompletableFuture.supplyAsync {
+    // MongoDB operation
+}
+```
+
+This allows the service and controller layers to continue using `CompletableFuture`-based APIs.
 
 ---
 
-### 🔹 BCrypt Password Hashing
+# 🔄 Data Flow – Water Update
 
-User passwords are never stored as plaintext.
+Example water update flow:
 
-Signup and password-update flows hash raw passwords with BCrypt before persistence.
-
-Login verifies credentials using:
-
-```java
-PasswordEncoder.matches(...)
-```
-
-MongoDB stores the hash as:
+1. User presses an Add Water button.
+2. Android creates an HTTPS PATCH request.
+3. Android sends the JWT as a Bearer token.
+4. TLS protects the request.
+5. `JwtAuthenticationFilter` validates the JWT.
+6. `UsersController` receives the authorized request.
+7. `WaterService` processes the operation.
+8. `WaterRepository` defines the persistence operation.
+9. `MongoWaterRepository` performs the MongoDB work.
+10. A MongoDB transaction protects related writes.
+11. MongoDB stores the water record.
+12. The result propagates back through the repository, service, and controller.
+13. Android receives the HTTPS response.
 
 ```text
-passwordHash
+User
+ ↓
+Android
+ ↓
+HTTPS + Bearer JWT
+ ↓
+JwtAuthenticationFilter
+ ↓
+UsersController
+ ↓
+WaterService
+ ↓
+WaterRepository
+ ↓
+MongoWaterRepository
+ ↓
+MongoDB Transaction
+ ↓
+MongoDB
 ```
-
-BCrypt protects stored passwords even if database contents are exposed.
 
 ---
 
-### 🔹 JWT Authentication and Authorization
+# 🔐 Security
+
+The project uses multiple security layers.
+
+## BCrypt
+
+Passwords are hashed using BCrypt before persistence.
+
+Login verifies the supplied password against the stored BCrypt hash.
+
+```text
+Raw Password
+      ↓
+BCrypt
+      ↓
+passwordHash
+      ↓
+MongoDB
+```
+
+---
+
+## JWT
 
 Successful login returns a signed JWT access token.
 
-The Android client stores the token locally and sends it in the `Authorization` header for protected requests:
+The JWT contains the authenticated username as its subject.
+
+Android sends the token on protected requests:
 
 ```http
 Authorization: Bearer <JWT>
 ```
 
-The backend validates the token before protected controller endpoints execute and checks that the token subject matches the username in the requested URL.
+The access token is stateless.
 
-The access token is stateless and is not stored in MongoDB.
+It is not stored in MongoDB as a server-side session.
 
 ---
 
-### 🔹 HTTPS / TLS Communication
+## HTTPS / TLS
 
-Communication between the Android application and the Spring Boot backend uses HTTPS.
+Communication between Android and Spring Boot uses HTTPS.
 
-For local development, Spring Boot uses a PKCS#12 keystore:
+The local server uses:
 
 ```text
-keystore.p12
+src/main/resources/keystore.p12
 ```
 
-The keystore contains:
+The PKCS#12 keystore contains:
 
 ```text
 Server certificate
@@ -957,378 +947,284 @@ Public key
 Private key
 ```
 
-The private key remains on the Spring Boot server and must not be committed to version control.
+The private key remains on the backend.
 
-The public certificate is exported separately as:
-
-```text
-hibari_local.crt
-```
-
-The Android application uses this public certificate to trust the local development server.
-
-The local certificate contains Subject Alternative Names for the addresses used during development, including:
-
-```text
-localhost
-127.0.0.1
-10.0.2.2
-```
-
-`10.0.2.2` is the special Android Emulator address used to access the host development machine.
-
-The Android production/main network configuration blocks cleartext HTTP.
-
-A separate debug network configuration permits HTTP only for local MockWebServer instrumented tests.
-
-This keeps the real application connection encrypted while still allowing isolated local HTTP mocks during automated testing.
-
----
-
-### 🔹 Request and Response DTOs
-
-The backend does not need to expose the internal `User` model directly through user-related REST responses.
-
-Examples:
-
-```text
-LoginRequest
-SignupRequest
-UpdateUserRequest
-UserResponse
-WaterResponse
-GoalResponse
-GoalUpdateResponse
-CaloriesResponse
-```
-
-This improves separation between persistence data and the public REST contract.
-
----
-
-### 🔹 Centralized Validation Errors
-
-Invalid request bodies are handled through a global exception handler instead of repeating validation response logic in every endpoint.
-
-Manual PATCH validation errors are also converted into HTTP `400 Bad Request`.
-
----
-
-## 🧪 Software Testing
-
-The project includes automated tests for both the Android application and the Spring Boot backend.
-
-### 📱 Android Testing
-
-Testing technologies include:
-
-- JUnit 4
-- Robolectric
-- Mockito
-- OkHttp MockWebServer
-- AndroidX Test
-
-Android tests cover:
-
-- Activity behavior
-- User interface logic
-- Login and signup flows
-- BMI calculations
-- Daily water goal management
-- Water intake updates
-- Weekly chart behavior
-- REST API communication
-- REST request and response handling
-- JWT parsing and storage after login
-- Bearer-token headers on protected REST requests
-- Network errors
-- Toast messages
-- Android runtime behavior
-
-Robolectric is used to test Android components directly on the JVM without requiring a physical device or emulator.
-
-MockWebServer is used to simulate backend responses and inspect outgoing HTTP requests, including `Authorization` headers.
-
-The production Android client communicates with the Spring Boot backend over HTTPS.
-
-MockWebServer runs locally over HTTP during instrumented tests. The debug-only Android Network Security Configuration permits cleartext traffic to `localhost` for these tests without enabling cleartext communication for the real application backend.
-
-Mockito is used to create mock objects and isolate dependencies.
-
----
-
-### 🌐 Spring Boot Testing
-
-Testing technologies include:
-
-- JUnit 5 / JUnit Jupiter
-- Spring Boot Test
-- TestRestTemplate
-- MongoDB integration testing
-- Transaction testing
-- Concurrency testing
-- Asynchronous operation testing
-- JWT unit testing
-
-The backend includes three main test groups:
-
-```text
-CapstoneServicesIntegrationTest
-UsersControllerIntegrationTest
-JwtServiceTest
-```
-
-`CapstoneServicesIntegrationTest` verifies the service and repository flow against MongoDB.
-
-`UsersControllerIntegrationTest` runs Spring Boot with an embedded server on a random port and performs requests through `TestRestTemplate`.
-
-Protected controller requests use real JWTs generated by `JwtService`.
-
-`JwtServiceTest` verifies:
-
-- Token generation
-- Token validation
-- Username extraction
-- Invalid-token rejection
-- Expired-token rejection
-- Tampered-token rejection
-
-Backend tests cover:
-
-- Spring application context startup
-- Service-to-repository integration
-- REST controller endpoints
-- Signup and login behavior
-- Concurrent signup protection
-- BCrypt password storage and matching
-- JWT generation and validation
-- Protected requests with Bearer authentication
-- User creation, retrieval, update, patch, delete, and existence checks
-- HTTP GET, POST, PUT, PATCH, DELETE, and HEAD
-- HTTP status codes and response bodies
-- Validation behavior
-- Water intake updates
-- Water history
-- Weekly averages
-- Daily water goals
-- BMI updates and distribution
-- Calories
-- MongoDB transactions
-- MongoDB upserts
-- Transaction-version changes
-- Cascade deletion
-- Concurrency invariants
-- Asynchronous operations
-- Error handling
-
----
-
-## 🔐 Security
-
-Current security-related design:
-
-- User passwords are hashed with BCrypt before they are stored in MongoDB
-- Login verifies the raw password against the stored BCrypt hash
-- Successful login returns a signed JWT access token
-- JWTs contain the authenticated username as the token subject and have a limited lifetime
-- Protected Android requests send the token through `Authorization: Bearer <token>`
-- `JwtAuthenticationFilter` validates protected requests before they reach `UsersController`
-- Missing, malformed, invalid, or expired tokens are rejected with `401 Unauthorized`
-- A valid token used against another user's protected URL is rejected with `403 Forbidden`
-- The JWT access token is not stored in MongoDB
-- Android-to-backend communication uses HTTPS/TLS
-- Cleartext traffic is disabled for the real backend connection
-- The local Android HTTPS connection trusts the configured development certificate
-- The Spring Boot private key remains inside the local PKCS#12 keystore
-- The server keystore is excluded from version control
-- MongoDB connection values are loaded from `.env`
-- JWT secret values are loaded from `.env`
-- Sensitive local configuration files are excluded from version control
-- MongoDB access is centralized in backend repository implementations
-- Request validation rejects invalid input before persistence
-- PATCH values are type-checked before reaching MongoDB
-- User response DTOs do not expose passwords
-- User passwords are not included in the `User.toString()` output
-
-Public endpoints include:
-
-```text
-GET  /api/users/health
-POST /api/users/signup
-POST /api/users/login
-GET  /api/users/stats/bmiDistribution
-```
-
-User-specific endpoints require a valid JWT.
-
-Sensitive files excluded from the repository should include:
-
-```text
-.env
-application.properties
-local.properties
-*.jks
-*.keystore
-*.p12
-*.pfx
-```
-
-The local public development certificate:
+Android receives only the public development certificate:
 
 ```text
 hibari_local.crt
 ```
 
-does not contain the server private key and may be included in the Android project for local development trust configuration.
+---
 
-> **Current limitation:** the current implementation uses a stateless access token without refresh-token rotation or server-side token revocation. Those mechanisms would be appropriate future hardening for a production deployment.
+## Security Layers
 
-> **Development HTTPS note:** the current local HTTPS setup uses a self-signed development certificate. A production deployment should use a real domain and a certificate issued by a trusted Certificate Authority.
+```text
+BCrypt
+   ↓
+Protects passwords at rest
+
+JWT
+   ↓
+Authenticates and authorizes API requests
+
+HTTPS / TLS
+   ↓
+Protects traffic between Android and Spring Boot
+```
+
+Example login flow:
+
+```text
+Raw password entered in Android
+        ↓
+HTTPS
+        ↓
+Spring Boot
+        ↓
+BCrypt password verification
+        ↓
+JWT generated
+        ↓
+JWT returned over HTTPS
+        ↓
+Android stores JWT
+        ↓
+Protected requests use Bearer JWT
+```
 
 ---
 
-## 🛠 Technologies Used
+# 🧪 Software Testing
 
-### Android Client
+Both projects include automated tests.
 
-- Java
-- Android SDK
-- Gradle
-- Kotlin DSL
-- OkHttp
+---
+
+## 📱 Android Testing
+
+All current Android test classes are local JVM tests under:
+
+```text
+app/src/test/java/com/example/myfinaltopapplication/
+```
+
+Current test classes:
+
+```text
+BMIActivityTest.kt
+DailyWaterGoalActivityTest.kt
+HomePageTest.kt
+LoginActivityTest.kt
+RestClientTest.kt
+SignupActivityTest.kt
+WaterActivityTest.kt
+WaterChartActivityTest.kt
+```
+
+The current `androidTest` source set contains no test source files.
+
+The main Android test suite therefore does not require an Android emulator or physical Android device.
+
+---
+
+### Android Test Technologies
+
+- JUnit 4.13.2
+- Robolectric 4.17
+- Mockito 5.24.0
+- Mockito Kotlin 6.4.0
+- OkHttp MockWebServer 5.5.0
+- AndroidX Test Core
+
+---
+
+### Robolectric
+
+Robolectric is used to execute Android framework behavior directly on the JVM.
+
+Tests cover:
+
+- Activity creation
+- Activity lifecycle
+- UI elements
+- Navigation
 - SharedPreferences
-- Android Network Security Configuration
-- MPAndroidChart
+- Toast messages
+- Notifications
+- AlarmManager behavior
+- Water reminders
+- Charts
 
-### Backend
+Activity tests keep their `ActivityController` references and explicitly close them after each test.
 
-- Java 23
-- Spring Boot 3.5
-- Spring Web
-- Spring Security Crypto
-- BCrypt
-- Jakarta Bean Validation
-- Maven
-- REST API
-- HTTPS / TLS
-- PKCS#12
-- Nimbus JOSE + JWT
-- CompletableFuture
-- MongoDB Java Driver
-
-### Database
-
-- MongoDB 8
-- BSON
-- MongoDB Java Driver
-- Compound indexes
-- Unique indexes
-- Transactions
-- Upserts
-- Single-node replica set for local development
-
-### Security
-
-- BCrypt
-- JWT / HS256
-- HTTPS / TLS
-- PKCS#12 server keystore
-- Android certificate trust configuration
-- Bearer authentication
-
-### Testing
-
-#### Android
-
-- JUnit 4
-- Robolectric
-- Mockito
-- OkHttp MockWebServer
-- AndroidX Test
-
-#### Backend
-
-- JUnit 5 / JUnit Jupiter
-- Spring Boot Test
-- TestRestTemplate
-- MongoDB integration testing
-- MongoDB transaction testing
-- Concurrency testing
-- JWT unit testing
-
-### Development Tools
-
-- Android Studio
-- IntelliJ IDEA
-- Git
-- GitHub
-- Java Keytool
-- Maven
-- MongoDB Shell (`mongosh`)
+This ensures that Robolectric Activity resources are released after test execution.
 
 ---
 
-## 📊 Features
+### Mockito
 
-### 👤 User System
+Mockito is used to isolate dependencies.
+
+The Android tests use Kotlin-aware Mockito matchers where appropriate.
+
+Examples include:
+
+```kotlin
+any<String>()
+any<Int>()
+any<Double>()
+eq("john")
+eq(200)
+```
+
+---
+
+### MockWebServer
+
+`RestClientTest.kt` uses OkHttp MockWebServer.
+
+It runs as a local JVM test with Robolectric.
+
+The real `RestClient` uses:
+
+```text
+https://10.0.2.2:8443/myapp/api/users
+```
+
+During `RestClientTest`, a test OkHttp client rewrites the destination to:
+
+```text
+http://localhost:<random-port>
+```
+
+The test keeps the original:
+
+- HTTP method
+- Request path
+- Query parameters
+- Headers
+- Request body
+
+This allows the real REST client behavior to be tested without starting the Spring Boot server.
+
+---
+
+### Running Android Tests
+
+Windows:
+
+```powershell
+gradlew.bat :app:testDebugUnitTest --tests "com.example.myfinaltopapplication.*"
+```
+
+Unix-like systems:
+
+```bash
+./gradlew :app:testDebugUnitTest --tests "com.example.myfinaltopapplication.*"
+```
+
+No emulator is required for these local JVM tests.
+
+---
+
+## 🌐 Backend Testing
+
+Backend tests are written in Kotlin.
+
+Current test classes:
+
+```text
+CapstoneServicesIntegrationTest.kt
+UsersControllerIntegrationTest.kt
+JwtServiceTest.kt
+```
+
+Testing technologies include:
+
+- JUnit 5
+- JUnit Jupiter
+- Spring Boot Test
+- TestRestTemplate
+- Mockito
+- MongoDB integration testing
+
+---
+
+### `CapstoneServicesIntegrationTest`
+
+Tests the real service/repository architecture against MongoDB.
+
+Coverage includes:
 
 - Signup
-- Login
-- User retrieval
-- Full user update
-- Partial user update
+- Duplicate signup
+- Concurrent duplicate signup
+- User creation
+- User existence
 - User deletion
-- User existence checks
-- BCrypt password hashing
-- JWT-based authentication and user-specific authorization
-- Local Android session management with persisted JWT
-- HTTPS-protected client-server communication
+- Login
+- Password validation
+- Water updates
+- Water totals
+- Water history
+- Weekly averages
+- Goals
+- Calories
+- BMI statistics
+- MongoDB transactions
+- Concurrent operations
+- Removal of related MongoDB documents
 
-### 💧 Water Tracking
-
-- Add 150 ml
-- Add 200 ml
-- Add 1000 ml
-- Track daily totals
-- Store individual drink entries
-- Store daily history
-- Calculate weekly averages
-- Configure a daily water goal
-
-### ⚖️ BMI Tracking
-
-- Calculate BMI
-- Store BMI data
-- Update BMI
-- Retrieve BMI-related information
-- Calculate global BMI distribution statistics
-
-BMI categories:
-
-```text
-Underweight: BMI < 18.5
-Normal:      18.5 <= BMI < 25
-Overweight:  25 <= BMI < 30
-Obese:       BMI >= 30
-```
-
-### 🔥 Calories
-
-- Store daily calories
-- Retrieve calories
-- Validate allowed calorie updates
-- Update or create today's calorie document using MongoDB upsert
-
-### 📈 Visualization
-
-- Weekly water chart
-- Daily water tracking
-- Historical water consumption
-- Daily goal progress
+MongoDB must be available for these integration tests.
 
 ---
 
-## 🌐 Main REST Endpoints
+### `UsersControllerIntegrationTest`
+
+Runs the Spring Boot application with an embedded web server.
+
+It performs real HTTP requests through `TestRestTemplate`.
+
+Coverage includes:
+
+- Health endpoint
+- Signup
+- Login
+- GET user
+- GET all users
+- PATCH user
+- DELETE user
+- HEAD user
+- BMI
+- Water
+- Water history
+- Weekly averages
+- Goals
+- Calories
+- HTTP status codes
+- Bearer authentication
+
+---
+
+### `JwtServiceTest`
+
+Tests JWT functionality independently.
+
+Coverage includes:
+
+- Token generation
+- Valid-token validation
+- Username extraction
+- Invalid token
+- Tampered token
+- Different signing algorithm
+
+MongoDB is not required for the JWT-only tests.
+
+---
+
+# 🌐 REST API
 
 Base path:
 
@@ -1336,7 +1232,9 @@ Base path:
 /api/users
 ```
 
-Public endpoints:
+---
+
+## Public Endpoints
 
 ```text
 GET     /health
@@ -1345,17 +1243,24 @@ POST    /login
 GET     /stats/bmiDistribution
 ```
 
+These endpoints do not require a JWT.
+
+---
+
+## Protected Endpoints
+
 Protected endpoints require:
 
 ```http
 Authorization: Bearer <JWT>
 ```
 
+Available user-related routes include:
+
 ```text
 GET     /
 GET     /{username}
 HEAD    /{username}
-PUT     /{username}
 PATCH   /{username}
 DELETE  /{username}
 
@@ -1377,45 +1282,191 @@ For user-specific routes, the JWT subject must match the `{username}` path value
 
 ---
 
-## ▶️ Running the Project
+# 📊 Features
 
-### 📱 Android Application
+## 👤 User System
 
-Open this directory in Android Studio:
-
-```text
-Hai-Bari android application
-```
-
-Allow Gradle to synchronize, make sure MongoDB and the Spring Boot server are running, select an Android emulator, and run the application.
-
-For the Android emulator, the backend is accessed through:
-
-```text
-https://10.0.2.2:8443/myapp/api/users
-```
-
-`10.0.2.2` is the Android Emulator address that maps to the host computer.
-
-The Android application trusts the local development certificate through:
-
-```text
-app/src/main/res/raw/hibari_local.crt
-```
-
-and:
-
-```text
-app/src/main/res/xml/network_security_config.xml
-```
-
-The normal application configuration disables cleartext HTTP traffic.
+- Signup
+- Login
+- User retrieval
+- User listing
+- Partial user update
+- User deletion
+- User existence checks
+- BCrypt password hashing
+- JWT authentication
+- User-specific authorization
+- Local Android session persistence
 
 ---
 
-### 🍃 MongoDB
+## 💧 Water Tracking
+
+- Add water intake
+- Store individual drink records
+- Calculate today's total
+- Calculate yesterday's total
+- Retrieve water history
+- Calculate weekly averages
+- Transaction-safe updates
+
+---
+
+## ⚖️ BMI Tracking
+
+- Calculate BMI
+- Store BMI
+- Update BMI
+- Retrieve BMI-related data
+- Global BMI distribution statistics
+
+---
+
+## 🔥 Calories
+
+- Store daily calories
+- Retrieve daily calories
+- Validate calorie values
+- MongoDB upsert
+- Transaction-protected updates
+
+---
+
+## 🎯 Daily Water Goals
+
+- Retrieve current goal
+- Update today's goal
+- Keep historical goal records
+- Validate allowed goal values
+- MongoDB upsert
+
+---
+
+## 📈 Visualization
+
+- Water history chart
+- Weekly water chart
+- Daily water tracking
+- Daily goal progress
+- BMI distribution chart
+
+---
+
+## 🔔 Notifications
+
+- Water reminder switch
+- AlarmManager scheduling
+- Water reminder receiver
+- Android notifications
+
+---
+
+# 🛠 Technologies Used
+
+## Android
+
+- Kotlin
+- Android SDK
+- Android Gradle Plugin 9.4.1
+- Gradle 9.6.1
+- Gradle Kotlin DSL
+- AndroidX
+- OkHttp 5.5.0
+- SharedPreferences
+- MPAndroidChart
+
+---
+
+## Backend
+
+- Kotlin 1.9.25
+- Spring Boot 3.5.16
+- Spring Web
+- Spring Security Crypto
+- BCrypt
+- Jakarta Bean Validation
+- Maven
+- REST API
+- HTTPS / TLS
+- PKCS#12
+- MongoDB
+- MongoDB synchronous driver
+- BSON
+- MongoDB transactions
+- MongoDB upsert
+- MongoDB replica set
+- Nimbus JOSE + JWT
+- CompletableFuture
+
+The backend build is configured to use JDK 23.
+
+---
+
+## Database
+
+- MongoDB
+- Four primary collections
+- ObjectId relationships
+- Unique indexes
+- Compound indexes
+- Transactions
+- Upserts
+- Single-node development replica set
+
+---
+
+## Android Testing
+
+- JUnit 4.13.2
+- Robolectric 4.17
+- Mockito 5.24.0
+- Mockito Kotlin 6.4.0
+- MockWebServer 5.5.0
+- AndroidX Test Core
+
+---
+
+## Backend Testing
+
+- JUnit 5
+- JUnit Jupiter
+- Spring Boot Test
+- TestRestTemplate
+- Mockito
+- MongoDB integration testing
+
+---
+
+## Development Tools
+
+- Android Studio
+- IntelliJ IDEA
+- Git
+- GitHub
+- Maven
+- Gradle
+- MongoDB Shell (`mongosh`)
+- Java Keytool
+
+---
+
+# ▶️ Running the Project
+
+## MongoDB
 
 MongoDB must be running before starting the backend.
+
+Local development uses replica set:
+
+```text
+rs0
+```
+
+Example URI:
+
+```text
+mongodb://localhost:27017/?replicaSet=rs0
+```
 
 The local database is:
 
@@ -1423,148 +1474,99 @@ The local database is:
 hibari_db
 ```
 
-The local server uses a single-node replica set:
+MongoDB configuration is loaded from `.env`.
+
+Required configuration includes values for:
 
 ```text
-rs0
+mongodb.uri
+mongodb.database
+JWT_SECRET
 ```
-
-MongoDB configuration:
-
-```yaml
-replication:
-  replSetName: rs0
-```
-
-The replica set should report:
-
-```text
-PRIMARY
-```
-
-The backend uses:
-
-```env
-mongodb.uri=mongodb://localhost:27017/?replicaSet=rs0
-mongodb.database=hibari_db
-```
-
-The replica set is required because the backend uses MongoDB transactions.
 
 ---
 
-### 🌐 Spring Boot Server
+## Spring Boot Server
 
-Open this directory in IntelliJ IDEA:
+Open:
 
 ```text
 Spring Server
 ```
 
-Run:
+The application entry point is:
 
 ```text
-Spring Server/
-└── src/main/java/org/example/CapstoneProject/Application.java
+src/main/java/org/example/CapstoneProject/Application.kt
 ```
 
-Or from the terminal:
+Run from IntelliJ IDEA or Maven:
 
 ```bash
 mvn spring-boot:run
 ```
 
-The configured server context path is:
+The context path is:
 
 ```text
 /myapp
 ```
 
-The local development HTTPS port is:
+HTTPS port:
 
 ```text
 8443
 ```
 
-Example health endpoint:
+Health endpoint:
 
 ```text
 https://localhost:8443/myapp/api/users/health
 ```
 
-Because the local development certificate is self-signed, command-line testing with `curl` may require:
-
-```bash
-curl -k https://localhost:8443/myapp/api/users/health
-```
-
-The `-k` option is used only for local command-line testing with the self-signed certificate.
-
-The Android application does not disable certificate verification. Instead, it explicitly trusts the local development certificate through Android Network Security Configuration.
-
-The Spring Boot HTTPS configuration uses a local PKCS#12 keystore:
+The local Spring Boot server uses:
 
 ```text
 src/main/resources/keystore.p12
 ```
 
-The keystore contains the server private key and is excluded from Git.
-
-Sensitive MongoDB, JWT, and HTTPS configuration values are required locally but are not intended to be committed to the repository.
-
 ---
 
-### 🧪 Android MockWebServer Tests
+## Android Application
 
-Instrumented `RestClientTest` tests use OkHttp `MockWebServer`.
-
-MockWebServer runs locally over HTTP:
+Open:
 
 ```text
-http://localhost:<random-port>
+Hai-Bari android application
 ```
 
-The test OkHttp interceptor redirects production REST URLs to the local MockWebServer while preserving the original request path, query parameters, method, headers, and body.
+in Android Studio.
 
-A debug-only network security configuration exists under:
+Allow Gradle synchronization to complete.
+
+Start:
+
+1. MongoDB
+2. Spring Boot server
+3. Android application
+
+The Android emulator accesses the host backend through:
 
 ```text
-app/src/debug/res/xml/network_security_config.xml
-```
-
-This configuration allows cleartext HTTP only for `localhost`, which is required by MockWebServer.
-
-The real backend connection remains HTTPS-only.
-
----
-
-### Running Backend Tests
-
-The Spring Boot integration tests start the required Spring application context automatically.
-
-The controller integration tests use an embedded web server with a random port, so the normal server does not need to be started manually before running them.
-
-MongoDB must be available because the integration tests use the real MongoDB-backed repositories.
-
-Run from IntelliJ IDEA or:
-
-```bash
-mvn test
+https://10.0.2.2:8443/myapp/api/users
 ```
 
 ---
 
-## 🔑 Local HTTPS Certificate Design
+# 🔑 Local HTTPS Certificate Design
 
-The local development HTTPS setup uses two related files.
-
-### Server Keystore
+The backend uses:
 
 ```text
 keystore.p12
 ```
 
-The PKCS#12 keystore contains:
+The keystore contains:
 
 ```text
 Certificate
@@ -1572,169 +1574,141 @@ Public key
 Private key
 ```
 
-It is used by Spring Boot to establish HTTPS connections and prove ownership of the server certificate.
+The private key remains on the backend.
 
-The private key is sensitive and must never be distributed with the Android application or committed to Git.
-
-### Android Public Certificate
+Android uses:
 
 ```text
 hibari_local.crt
 ```
 
-This file contains the public certificate only.
-
-It does not contain the server private key.
-
-Android uses this certificate as a local trust anchor so that the application can establish a verified TLS connection to the self-signed development server.
-
-The relationship is:
+This file contains the public certificate and does not contain the backend private key.
 
 ```text
+Spring Boot
 keystore.p12
     │
     ├── Certificate
     ├── Public Key
-    └── Private Key 🔐
+    └── Private Key
           │
-          │ certificate export
+          │ public certificate export
           ▼
+Android
 hibari_local.crt
     │
     ├── Certificate
     └── Public Key
 ```
 
-The server keeps the private key.
-
-The Android client receives only the public certificate.
-
 ---
 
-## 🔒 Security Layers
+# 🔒 Sensitive Files
 
-Different security mechanisms solve different problems in the project:
+Sensitive or machine-specific files should not be committed.
+
+Backend examples:
 
 ```text
-BCrypt
-    ↓
-Protects passwords at rest
-
-JWT
-    ↓
-Authenticates and authorizes API requests
-
-HTTPS / TLS
-    ↓
-Protects data while it travels across the network
-
-MongoDB Transactions
-    ↓
-Protect multi-document consistency
+.env
+src/main/resources/application.properties
+src/main/resources/keystore.p12
+*.p12
+*.pfx
 ```
 
-Example login flow:
+Android examples:
 
 ```text
-Raw password entered in Android
-        ↓
-HTTPS encrypted transport
-        ↓
-Spring Boot receives login request
-        ↓
-BCrypt verifies password
-        ↓
-JWT generated
-        ↓
-JWT returned over HTTPS
-        ↓
-Android stores JWT
-        ↓
-Protected requests send Bearer token over HTTPS
+local.properties
+*.jks
+*.keystore
+```
+
+Generated directories should also remain outside version control:
+
+```text
+.gradle/
+.idea/
+build/
+target/
 ```
 
 ---
 
-## 🚀 Future Improvements
+# 🚀 Future Improvements
 
-- Add refresh-token rotation for longer-lived sessions
-- Add server-side token revocation / logout support
-- Move Android token storage to a stronger encrypted storage mechanism
-- Remove sensitive request-body and token logging from Android debug interceptors
-- Add additional dedicated `JwtAuthenticationFilter` security tests
-- Replace the local self-signed development certificate with a trusted CA-issued certificate when deploying the backend publicly
-- Move production HTTPS certificate/private-key management outside the application package
-- Use environment-based HTTPS keystore credentials for deployment
-- Add production MongoDB authentication and authorization
-- Move production MongoDB deployment away from the local single-node development replica set
-- More detailed health statistics
+Possible future improvements include:
+
+- Refresh-token rotation
+- Server-side token revocation
+- Stronger encrypted Android token storage
+- Production MongoDB authentication and authorization
+- Production MongoDB replica-set deployment
+- External production secret management
+- Trusted CA-issued production TLS certificates
+- Cloud deployment
+- More health statistics
 - Smart hydration suggestions
 - Improved UI and UX
 - Improved notification scheduling
-- Cloud deployment for the Spring Boot server
 - Additional charts and reports
-- Offline data support
-- Additional automated test coverage
-- Further separation of calculation logic from persistence logic where appropriate
+- Offline support
+- Additional automated tests
 
 ---
 
-## 👨‍💻 Author
+# 👨‍💻 Author
 
 Sharbel Zarzour
 
 ---
 
-## 🎓 Academic Context
+# 🎓 Academic Context
 
 This project was developed as a final capstone project in Software Engineering studies.
 
 ---
 
-## 💡 Key Strengths
+# 💡 Key Strengths
 
 - Full-stack architecture
-- Android mobile client
-- Spring Boot REST API
-- MongoDB database
+- Kotlin-only application source code
+- Kotlin Android client
+- Kotlin Spring Boot backend
 - Layered backend architecture
 - Controller / Service / Repository separation
-- Repository abstraction
+- MongoDB repository abstraction
 - Dedicated MongoDB repository implementations
-- Official MongoDB Java Driver
+- Centralized MongoDB configuration
+- Four-collection MongoDB data model
+- ObjectId-based relationships
+- MongoDB indexes
+- MongoDB upserts
+- MongoDB multi-document transactions
+- Replica-set transaction support
+- Concurrency-oriented integration testing
 - Request and response DTOs
 - Jakarta Bean Validation
-- Manual PATCH type validation
 - Centralized exception handling
 - Constructor dependency injection
-- Automated Android and backend testing
-- Robolectric-based JVM testing
-- Mocked HTTP testing with MockWebServer
-- Spring integration testing with TestRestTemplate
-- MongoDB integration testing
-- Asynchronous repository contracts with CompletableFuture
-- MongoDB multi-document transactions
-- `withTransaction(...)` retry support for eligible transient failures
-- Transaction-based concurrency protection
-- Shared `transactionVersion` concurrency mechanism
-- MongoDB upsert operations
-- Unique and compound MongoDB indexes
-- Cascade deletion of user-related MongoDB data
-- Concurrency integrity tests
-- Individual water-record document storage
-- Historical calorie and goal storage
-- Single-node MongoDB replica set for local development
-- Separation between client, server, and database
-- Organized multi-project repository
-- API compatibility preserved during backend database migration
 - BCrypt password hashing
-- JWT-based authentication
-- User-specific authorization through JWT subject checks
-- Stateless access-token validation
+- JWT authentication
+- User-specific JWT authorization
+- Stateless access tokens
 - HTTPS/TLS client-server communication
-- Local self-signed certificate support for Android development
-- PKCS#12 server keystore
+- Local Android certificate trust
+- PKCS#12 backend keystore
 - Android Network Security Configuration
-- Cleartext traffic disabled for the real backend connection
-- Debug-only localhost access for MockWebServer testing
-- Private server key excluded from version control
+- OkHttp REST client
+- Local JVM Android testing
+- Robolectric Activity testing
+- Explicit ActivityController cleanup
+- MockWebServer REST testing
+- Spring Boot integration testing
+- TestRestTemplate controller testing
+- MongoDB integration testing
+- CompletableFuture-based asynchronous API contracts
+- Transaction-safe water updates
+- Transaction-safe calories and goal updates
+- Separation between Android, backend, and database layers
