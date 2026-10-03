@@ -92,7 +92,7 @@ class JwtAuthenticationFilter(
         val tokenUsername = jwtService.extractUsername(token)
 
         // Reject a token that does not contain a username.
-        if (tokenUsername == null || tokenUsername.isBlank()) {
+        if (tokenUsername.isNullOrBlank()) {
             response.sendError(
                 HttpServletResponse.SC_UNAUTHORIZED,
                 "Token does not contain a valid username"
@@ -105,7 +105,7 @@ class JwtAuthenticationFilter(
 
         // When the request contains a username, make sure that the
         // authenticated user is accessing only their own resource.
-        if (requestedUsername != null && tokenUsername != requestedUsername) {
+        if ((requestedUsername != null) && (tokenUsername != requestedUsername)) {
             response.sendError(
                 HttpServletResponse.SC_FORBIDDEN,
                 "Token does not belong to the requested user"
