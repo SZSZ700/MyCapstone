@@ -135,7 +135,7 @@ class WaterActivity : AppCompatActivity() {
         totalWaterText.text = getString(R.string.so_far_today) + totalDrank + getString(R.string.ml1)
         yesterdayText.text = "Yesterday: $yesterdayAmountLocal ml"
 
-        // Fetch latest water log from the backend (Spring Boot -> Firebase).
+        // Fetch latest water log from the backend (Spring Boot -> MongoDb).
         RestClient.getWater(currentUser).thenAccept { obj ->
             // Move UI operations back to the Android main thread.
             runOnUiThread {
@@ -440,7 +440,7 @@ class WaterActivity : AppCompatActivity() {
         // Update the UI immediately.
         totalWaterText.text = "So far today: $totalDrank ml"
 
-        // Call backend API to update water log in Firebase.
+        // Call backend API to update water log in MongoDb.
         RestClient.updateWater(currentUser, amount).thenAccept { success ->
             // Move UI operations back to the Android main thread.
             runOnUiThread {
