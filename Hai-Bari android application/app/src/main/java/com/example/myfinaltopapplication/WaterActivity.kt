@@ -221,7 +221,7 @@ class WaterActivity : AppCompatActivity() {
         val daysForStats = 7
 
         // Call backend to get daily totals for last N days.
-        val historyFuture: CompletableFuture<JSONObject> = RestClient.getWaterHistoryMap(currentUser, daysForStats)
+        val historyFuture: CompletableFuture<JSONObject?> = RestClient.getWaterHistoryMap(currentUser, daysForStats)
 
         // Handle async response for history.
         historyFuture.thenAccept { obj ->

@@ -177,7 +177,7 @@ class DailyWaterGoal : AppCompatActivity() {
         val fGoal: CompletableFuture<JSONObject> = RestClient.getGoal(username)
 
         // Request today water (GET /{username}/water).
-        val fWater: CompletableFuture<JSONObject> = RestClient.getWater(username)
+        val fWater: CompletableFuture<JSONObject?> = RestClient.getWater(username)
 
         // When both are done, update UI.
         CompletableFuture.allOf(fGoal, fWater).thenAccept {

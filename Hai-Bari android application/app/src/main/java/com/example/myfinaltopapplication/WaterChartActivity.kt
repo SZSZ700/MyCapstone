@@ -208,9 +208,9 @@ class WaterChartActivity : AppCompatActivity() {
                         Log.w("CHART_WEEKLY", "No weekly averages found")
                     } else {
                         // 🐈 LOG 🐈 //
-                        for (entry in weeklyMap.entries) {
+                        for ((key, value) in weeklyMap) {
                             // Log each week and its average.
-                            Log.d("WEEKLY_MAP", "${entry.key} -> ${entry.value}")
+                            Log.d("WEEKLY_MAP", "$key -> $value")
                         }
                         // 🐈 LOG 🐈 //
 
@@ -222,11 +222,11 @@ class WaterChartActivity : AppCompatActivity() {
                         var idx = 0
 
                         // Convert weekly averages into chart entries.
-                        for (entry in weeklyMap.entries) {
+                        for ((key, value) in weeklyMap) {
                             // Add weekly average to chart.
-                            weeklyEntries.add(BarEntry(idx.toFloat(), entry.value.toFloat()))
+                            weeklyEntries.add(BarEntry(idx.toFloat(), value.toFloat()))
                             // Add week label to list.
-                            weekLabels.add(entry.key)
+                            weekLabels.add(key)
                             // Increment index.
                             idx++
                         }

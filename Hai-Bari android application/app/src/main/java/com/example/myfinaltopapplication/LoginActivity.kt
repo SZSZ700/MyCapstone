@@ -105,7 +105,7 @@ class LoginActivity : AppCompatActivity() {
                                 // ---------------------------------------------------------------------
                                 try {
                                     // RestClient.getWater -> sends GET /api/users/{username}/water.
-                                    RestClient.getWater(user.userName).thenAccept { obj ->
+                                    RestClient.getWater(user.userName!!).thenAccept { obj ->
                                         // Move SharedPreferences and UI-related work to the main thread.
                                         runOnUiThread {
                                             // Check whether water data was returned.

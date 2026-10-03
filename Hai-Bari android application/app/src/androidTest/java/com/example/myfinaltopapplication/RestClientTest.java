@@ -48,7 +48,7 @@ import okhttp3.mockwebserver.RecordedRequest;
  verifies that the client sends the correct requests.
 */
 
-@SuppressWarnings({"GrazieInspection", "SpellCheckingInspection"})
+@SuppressWarnings({"GrazieInspection"})
 @RunWith(AndroidJUnit4.class)
 public class RestClientTest {
 

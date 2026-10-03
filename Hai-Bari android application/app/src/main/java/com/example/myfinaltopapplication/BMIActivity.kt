@@ -387,7 +387,6 @@ class BMIActivity : AppCompatActivity() {
     // loadBmiDistributionChart - fetches global BMI distribution and renders it
     // in a PieChart using RestClient.getBmiDistribution().
     // -------------------------------------------------------------------------
-    @Suppress("SpellCheckingInspection")
     private fun loadBmiDistributionChart() {
         // Show default text if there is no data yet.
         bmiPieChart.setNoDataText("No BMI statistics available")
