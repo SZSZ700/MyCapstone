@@ -2,11 +2,11 @@
 
 ## 📌 Overview
 
-This directory contains the backend server for the Hi-Bari health and water tracking system.
+This directory contains the Kotlin backend server for the Hi-Bari health and water tracking system.
 
-The server exposes a REST API used by the Android application, handles authentication, authorization, business logic, validation, HTTPS/TLS communication, and communicates with MongoDB through the official MongoDB Java Driver.
+The server exposes a REST API used by the Android application, handles authentication, authorization, business logic, validation, HTTPS/TLS communication, and communicates with MongoDB through the synchronous MongoDB JVM driver (`mongodb-driver-sync`).
 
-The backend follows a layered architecture based on controllers, services, repository interfaces, MongoDB repository implementations, security components, DTOs, configuration, and centralized exception handling.
+The backend is implemented entirely in Kotlin and follows a layered architecture based on controllers, services, repository interfaces, MongoDB repository implementations, security components, DTOs, configuration, and centralized exception handling.
 
 The local development server uses HTTPS on port `8443`.
 
@@ -61,53 +61,52 @@ Spring Server/
     ├── main/
     │   ├── java/
     │   │   └── org/example/CapstoneProject/
-    │   │       ├── Application.java
+    │   │       ├── Application.kt
     │   │       │
-    │   │       ├── configuration/
-    │   │       │   ├── MongoConfiguration.java
-    │   │       │   └── PasswordConfiguration.java
+    │   │       ├── config/
+    │   │       │   ├── MongoConfiguration.kt
+    │   │       │   └── PasswordConfiguration.kt
     │   │       │
     │   │       ├── EnvConfiguration/
-    │   │       │   └── EnvConfig.java
+    │   │       │   └── EnvConfig.kt
     │   │       │
     │   │       ├── dto/
-    │   │       │   ├── LoginRequest.java
-    │   │       │   ├── LoginResponse.java
-    │   │       │   ├── SignupRequest.java
-    │   │       │   ├── UpdateUserRequest.java
-    │   │       │   ├── UserResponse.java
-    │   │       │   ├── WaterResponse.java
-    │   │       │   ├── GoalResponse.java
-    │   │       │   ├── GoalUpdateResponse.java
-    │   │       │   └── CaloriesResponse.java
+    │   │       │   ├── CaloriesResponse.kt
+    │   │       │   ├── GoalResponse.kt
+    │   │       │   ├── GoalUpdateResponse.kt
+    │   │       │   ├── LoginRequest.kt
+    │   │       │   ├── LoginResponse.kt
+    │   │       │   ├── SignupRequest.kt
+    │   │       │   ├── UserResponse.kt
+    │   │       │   └── WaterResponse.kt
     │   │       │
     │   │       ├── exception/
-    │   │       │   └── GlobalExceptionHandler.java
+    │   │       │   └── GlobalExceptionHandler.kt
     │   │       │
     │   │       ├── model/
-    │   │       │   └── User.java
+    │   │       │   └── User.kt
     │   │       │
     │   │       ├── repository/
-    │   │       │   ├── UserRepository.java
-    │   │       │   ├── WaterRepository.java
+    │   │       │   ├── UserRepository.kt
+    │   │       │   ├── WaterRepository.kt
     │   │       │   │
     │   │       │   └── mongo/
-    │   │       │       ├── MongoUserRepository.java
-    │   │       │       └── MongoWaterRepository.java
+    │   │       │       ├── MongoUserRepository.kt
+    │   │       │       └── MongoWaterRepository.kt
     │   │       │
     │   │       ├── security/
-    │   │       │   └── JwtAuthenticationFilter.java
+    │   │       │   └── JwtAuthenticationFilter.kt
     │   │       │
     │   │       ├── service/
-    │   │       │   ├── AuthenticationService.java
-    │   │       │   ├── JwtService.java
-    │   │       │   ├── UserService.java
-    │   │       │   ├── WaterService.java
-    │   │       │   ├── UserHealthService.java
-    │   │       │   └── StatisticsService.java
+    │   │       │   ├── AuthenticationService.kt
+    │   │       │   ├── JwtService.kt
+    │   │       │   ├── StatisticsService.kt
+    │   │       │   ├── UserHealthService.kt
+    │   │       │   ├── UserService.kt
+    │   │       │   └── WaterService.kt
     │   │       │
     │   │       └── web/
-    │   │           └── UsersController.java
+    │   │           └── UsersController.kt
     │   │
     │   └── resources/
     │       ├── application.properties
@@ -116,10 +115,12 @@ Spring Server/
     └── test/
         └── java/
             └── CapstoneTests/
-                ├── CapstoneServicesIntegrationTest.java
-                ├── UsersControllerIntegrationTest.java
-                └── JwtServiceTest.java
+                ├── CapstoneServicesIntegrationTest.kt
+                ├── JwtServiceTest.kt
+                └── UsersControllerIntegrationTest.kt
 ```
+
+> The backend contains Kotlin `.kt` source files only. The directories are currently named `src/main/java` and `src/test/java` as source-set paths, but there are no Java source files in the server project.
 
 > `.env`, `application.properties`, and `keystore.p12` contain local configuration and must be handled appropriately.
 
@@ -131,7 +132,7 @@ Spring Server/
 
 ## 🧩 Main Components
 
-### `Application.java`
+### `Application.kt`
 
 The main Spring Boot application class used to start the server.
 
@@ -139,7 +140,7 @@ Spring Boot starts an embedded server using the HTTPS configuration defined in t
 
 ---
 
-### `UsersController.java`
+### `UsersController.kt`
 
 Defines the REST API endpoints used by the Android application.
 
@@ -162,7 +163,7 @@ Authentication and authorization checks for protected endpoints are performed be
 
 The service layer is divided by responsibility.
 
-### `AuthenticationService.java`
+### `AuthenticationService.kt`
 
 Handles authentication-related application logic.
 
@@ -177,15 +178,17 @@ Responsibilities include:
 
 ---
 
-### `JwtService.java`
+### `JwtService.kt`
 
 Handles JWT creation and validation.
 
 Responsibilities include:
 
 - Generating signed JWT access tokens
+- Using HS256 for token signing
 - Adding the authenticated username as the token subject
 - Adding issue and expiration timestamps
+- Validating token algorithms
 - Validating token signatures
 - Validating token expiration
 - Extracting the username from the token subject
@@ -196,18 +199,24 @@ The JWT secret is loaded from local environment configuration and is not stored 
 
 The JWT secret must contain at least 32 characters.
 
+The current token lifetime is:
+
+```text
+24 hours
+```
+
 ---
 
-### `UserService.java`
+### `UserService.kt`
 
 Handles general user operations.
 
 Responsibilities include:
 
-- Retrieving users
+- Retrieving one user
+- Retrieving all users
 - Creating users
-- Updating users
-- Patching users
+- Patching supported user fields
 - Deleting users
 - Checking whether a user exists
 - Encoding passwords before persistence
@@ -232,11 +241,11 @@ For example:
 }
 ```
 
-is rejected instead of allowing an invalid BSON type to reach MongoDB.
+is rejected instead of allowing an invalid BSON value to reach MongoDB.
 
 ---
 
-### `WaterService.java`
+### `WaterService.kt`
 
 Handles water-related application operations.
 
@@ -246,13 +255,14 @@ Responsibilities include:
 - Retrieving today's and yesterday's water
 - Retrieving water history
 - Retrieving weekly averages
-- Managing daily water goals
+- Retrieving daily water goals
+- Updating daily water goals
 
 Database transactions and MongoDB-specific concurrency behavior remain inside the repository implementation.
 
 ---
 
-### `UserHealthService.java`
+### `UserHealthService.kt`
 
 Handles user health-related data.
 
@@ -264,7 +274,7 @@ Responsibilities include:
 
 ---
 
-### `StatisticsService.java`
+### `StatisticsService.kt`
 
 Handles global statistical operations.
 
@@ -285,7 +295,7 @@ Obese:       BMI >= 30
 
 ## 🔐 Security Layer
 
-### `JwtAuthenticationFilter.java`
+### `JwtAuthenticationFilter.kt`
 
 Protected REST requests pass through `JwtAuthenticationFilter` before reaching `UsersController`.
 
@@ -299,8 +309,8 @@ Authorization: Bearer <JWT>
 ```
 
 - Rejects missing or malformed Bearer tokens
-- Validates the JWT signature
-- Rejects expired or invalid tokens
+- Validates the JWT algorithm, signature, and expiration
+- Rejects invalid or expired tokens
 - Extracts the authenticated username from the token subject
 - Compares the token username with the `{username}` value in user-specific routes
 - Prevents one authenticated user from accessing another user's protected resources
@@ -333,7 +343,7 @@ The JWT access token itself is stateless and is not stored in MongoDB.
 
 ## 🔑 Password Security
 
-### `PasswordConfiguration.java`
+### `PasswordConfiguration.kt`
 
 Provides the shared BCrypt password encoder as a Spring bean.
 
@@ -365,7 +375,7 @@ Authentication succeeds or fails
 
 The raw password is never intentionally stored directly in MongoDB.
 
-Password updates through PUT or PATCH are also encoded before persistence.
+Password updates through PATCH are also encoded before persistence.
 
 BCrypt protects passwords at rest, while HTTPS protects passwords while they travel between the Android client and backend.
 
@@ -532,13 +542,17 @@ MongoUserRepository
 MongoWaterRepository
 ```
 
-These classes implement the repository interfaces using the synchronous MongoDB Java Driver.
+These classes implement the repository interfaces using the synchronous MongoDB JVM driver provided through:
+
+```text
+mongodb-driver-sync
+```
 
 Responsibilities include:
 
 - Reading data from MongoDB
 - Creating users
-- Updating users
+- Updating supported user fields
 - Deleting users
 - Querying users by username
 - Updating BMI
@@ -550,7 +564,7 @@ Responsibilities include:
 - Performing MongoDB upserts
 - Protecting multi-document operations from concurrency races
 - Converting MongoDB `Document` objects into application models
-- Wrapping synchronous database work with `CompletableFuture.supplyAsync(...)`
+- Wrapping synchronous database work with `CompletableFuture.supplyAsync { ... }`
 
 The service layer depends on repository interfaces instead of depending directly on MongoDB-specific classes.
 
@@ -558,7 +572,7 @@ The service layer depends on repository interfaces instead of depending directly
 
 ## ⚙️ Configuration
 
-### `MongoConfiguration.java`
+### `MongoConfiguration.kt`
 
 Creates and exposes the MongoDB dependencies used by the repositories.
 
@@ -586,13 +600,13 @@ MongoDB Repositories
 
 ---
 
-### `PasswordConfiguration.java`
+### `PasswordConfiguration.kt`
 
 Provides the BCrypt `PasswordEncoder` bean used by authentication and user-update operations.
 
 ---
 
-### `EnvConfig.java`
+### `EnvConfig.kt`
 
 Loads environment-specific configuration such as:
 
@@ -656,7 +670,11 @@ The local database is:
 hibari_db
 ```
 
-The project uses the official synchronous MongoDB Java Driver.
+The project uses the synchronous MongoDB JVM driver through:
+
+```text
+org.mongodb:mongodb-driver-sync
+```
 
 The current database contains four main collections:
 
@@ -669,7 +687,7 @@ goals
 
 MongoDB does not provide SQL-style foreign keys.
 
-Relationships are represented using MongoDB `ObjectId` values.
+Relationships between related documents are represented using MongoDB `ObjectId` values.
 
 ---
 
@@ -728,6 +746,7 @@ This structure supports:
 
 - Individual drink history
 - Daily water totals
+- Yesterday's total
 - Historical water retrieval
 - Weekly average calculations
 
@@ -750,7 +769,7 @@ Example:
 }
 ```
 
-Only one calorie document is allowed per user and date.
+Only one calorie document is intended per user and date.
 
 Today's value is written using MongoDB upsert.
 
@@ -773,7 +792,7 @@ Example:
 
 Older goal records remain stored as history.
 
-Only one goal document is allowed per user and date.
+Only one goal document is intended per user and date.
 
 Today's goal is written using MongoDB upsert.
 
@@ -781,7 +800,7 @@ Today's goal is written using MongoDB upsert.
 
 ## 🔍 MongoDB Indexes
 
-The database uses indexes for both performance and data integrity.
+The database design uses indexes for both query performance and data integrity.
 
 ### Unique Username Index
 
@@ -792,9 +811,9 @@ db.users.createIndex(
 )
 ```
 
-This guarantees that duplicate usernames cannot be stored.
+This prevents duplicate usernames from being stored.
 
-The index also protects against concurrent signup requests.
+The unique index also protects against concurrent signup attempts.
 
 ---
 
@@ -819,7 +838,7 @@ db.calories.createIndex(
 )
 ```
 
-This guarantees at most one calorie document per user and date.
+This guarantees at most one calorie document per user and date when the index is configured.
 
 ---
 
@@ -832,7 +851,7 @@ db.goals.createIndex(
 )
 ```
 
-This guarantees at most one goal document per user and date.
+This guarantees at most one goal document per user and date when the index is configured.
 
 ---
 
@@ -851,28 +870,28 @@ updateGoalMl()
 
 A MongoDB client session is created using:
 
-```java
+```kotlin
 mongoClient.startSession()
 ```
 
 The repositories use MongoDB's convenient transaction API:
 
-```java
-session.withTransaction(() -> {
+```kotlin
+session.withTransaction {
     // MongoDB operations
-    return true;
-});
+    true
+}
 ```
 
-Every operation belonging to the transaction must receive the same `ClientSession`.
+Every operation belonging to a transaction receives the same `ClientSession`.
 
 For example:
 
-```java
+```kotlin
 waterRecords.insertOne(
-        session,
-        document
-);
+    session,
+    document
+)
 ```
 
 ---
@@ -918,7 +937,7 @@ Insert water for the same user
 
 Both operations write to the same user's `transactionVersion`.
 
-MongoDB therefore detects the conflicting concurrent write instead of silently allowing inconsistent related data to be created.
+MongoDB can therefore detect conflicting concurrent writes instead of silently allowing inconsistent related data to be created.
 
 ---
 
@@ -926,16 +945,18 @@ MongoDB therefore detects the conflicting concurrent write instead of silently a
 
 The repository uses:
 
-```java
-session.withTransaction(...)
+```kotlin
+session.withTransaction {
+    // Transaction work
+}
 ```
 
-instead of manually managing only:
+instead of relying only on manually calling:
 
-```java
-session.startTransaction();
-session.commitTransaction();
-session.abortTransaction();
+```kotlin
+session.startTransaction()
+session.commitTransaction()
+session.abortTransaction()
 ```
 
 The convenient transaction API manages:
@@ -959,7 +980,7 @@ Conceptually:
 ```text
 Start transaction
         ↓
-Find and lock user
+Find user and increment transactionVersion
         ↓
 Delete calories
         ↓
@@ -997,7 +1018,7 @@ The transaction prevents partial deletion.
 The intended result is either:
 
 ```text
-User + all related data deleted
+User + related data deleted
 ```
 
 or:
@@ -1024,7 +1045,7 @@ When the Android application sends a request to add water:
 8. The controller calls `WaterService`.
 9. `WaterService` delegates the persistence operation to `WaterRepository`.
 10. `MongoWaterRepository` opens a MongoDB client session.
-11. `withTransaction(...)` starts the transactional workflow.
+11. `withTransaction { ... }` starts the transactional workflow.
 12. The user's `transactionVersion` is incremented.
 13. A new `water_records` document is inserted.
 14. The transaction is committed.
@@ -1100,7 +1121,7 @@ db.calories.updateOne(
 )
 ```
 
-This replaces the previous multi-step pattern:
+This replaces a multi-step pattern such as:
 
 ```text
 find
@@ -1110,7 +1131,7 @@ document exists?
 insert or update
 ```
 
-with one atomic MongoDB command.
+with one MongoDB update command using upsert.
 
 ---
 
@@ -1182,7 +1203,7 @@ replication:
   replSetName: rs0
 ```
 
-The replica set was initialized through MongoDB Shell using:
+The replica set can be initialized through MongoDB Shell using:
 
 ```javascript
 rs.initiate()
@@ -1206,7 +1227,7 @@ Full local URI:
 mongodb://localhost:27017/?replicaSet=rs0
 ```
 
-The MongoDB Java Driver then detects:
+The MongoDB driver can then detect:
 
 ```text
 REPLICA_SET_PRIMARY
@@ -1222,25 +1243,27 @@ STANDALONE
 
 ## ⚡ Asynchronous Repository Operations
 
-The MongoDB Java Driver used by the project is synchronous.
+The MongoDB driver used by the project is synchronous.
 
 Repository methods preserve the application's asynchronous contracts by wrapping blocking database work with:
 
-```java
-CompletableFuture.supplyAsync(...)
+```kotlin
+CompletableFuture.supplyAsync {
+    // MongoDB operation
+}
 ```
 
 This allows service and controller methods to continue using asynchronous chains such as:
 
-```java
-thenApply(...)
-thenCompose(...)
+```kotlin
+thenApply { ... }
+thenCompose { ... }
 ```
 
-Controller methods can therefore return:
+Controller methods can therefore return types such as:
 
-```java
-CompletableFuture<ResponseEntity<...>>
+```kotlin
+CompletableFuture<ResponseEntity<*>>
 ```
 
 while MongoDB-specific blocking operations remain inside the repository layer.
@@ -1256,10 +1279,17 @@ The REST API uses dedicated request and response DTOs.
 ```text
 LoginRequest
 SignupRequest
-UpdateUserRequest
 ```
 
-These classes represent JSON sent from the Android application to the backend.
+These classes represent typed JSON request bodies sent from the Android application to the backend.
+
+Partial user updates use:
+
+```text
+MutableMap<String, Any>
+```
+
+because the PATCH endpoint supports dynamic subsets of user fields.
 
 ### Response DTOs
 
@@ -1306,10 +1336,11 @@ Request validation uses Jakarta Bean Validation.
 
 Examples include:
 
-```java
+```kotlin
 @Valid
-@NotBlank
-@Min
+@field:NotBlank
+@field:Size
+@field:Min
 ```
 
 Validation is used for typed request DTOs such as:
@@ -1317,7 +1348,6 @@ Validation is used for typed request DTOs such as:
 ```text
 LoginRequest
 SignupRequest
-UpdateUserRequest
 ```
 
 Example invalid request:
@@ -1365,25 +1395,25 @@ Example invalid request:
 
 The service rejects the invalid type before it reaches the repository.
 
-This prevents errors such as:
+The service performs checks such as:
 
-```java
-((Number) updates.get("age")).intValue()
+```kotlin
+if (updates.containsKey("age") && updates["age"] !is Number) {
+    throw IllegalArgumentException("age must be a number")
+}
 ```
 
-being executed against an invalid String value.
-
-It also prevents MongoDB from storing fields with incorrect BSON types.
+This prevents MongoDB from receiving supported user fields with incorrect BSON-compatible value types.
 
 ---
 
 ## ⚠️ Global Exception Handling
 
-### `GlobalExceptionHandler.java`
+### `GlobalExceptionHandler.kt`
 
 Exceptions are handled centrally using:
 
-```java
+```kotlin
 @RestControllerAdvice
 ```
 
@@ -1406,7 +1436,7 @@ Invalid client input
 → HTTP 400 Bad Request
 ```
 
-This prevents individual controller methods from implementing duplicated error-handling code.
+This prevents individual controller methods from implementing duplicated validation-error handling.
 
 ---
 
@@ -1582,13 +1612,12 @@ Protected requests require:
 Authorization: Bearer <JWT>
 ```
 
-Endpoints:
+Current endpoints:
 
 ```text
 GET     /
 GET     /{username}
 HEAD    /{username}
-PUT     /{username}
 PATCH   /{username}
 DELETE  /{username}
 
@@ -1624,6 +1653,8 @@ For user-specific endpoints, the JWT subject must match the `{username}` path va
 }
 ```
 
+---
+
 ### User Response
 
 ```json
@@ -1635,6 +1666,8 @@ For user-specific endpoints, the JWT subject must match the `{username}` path va
 }
 ```
 
+---
+
 ### Water Response
 
 ```json
@@ -1644,6 +1677,8 @@ For user-specific endpoints, the JWT subject must match the `{username}` path va
 }
 ```
 
+---
+
 ### Daily Goal Response
 
 ```json
@@ -1652,6 +1687,8 @@ For user-specific endpoints, the JWT subject must match the `{username}` path va
 }
 ```
 
+---
+
 ### Goal Update Response
 
 ```json
@@ -1659,6 +1696,8 @@ For user-specific endpoints, the JWT subject must match the `{username}` path va
   "status": "OK"
 }
 ```
+
+---
 
 ### Calories Response
 
@@ -1676,29 +1715,32 @@ These DTOs preserve the JSON structure expected by the Android application while
 
 The server includes automated tests for the service/repository architecture, REST controller layer, MongoDB transactions, concurrency behavior, BCrypt behavior, and JWT functionality.
 
+All current backend tests are written in Kotlin.
+
+Current test files:
+
+```text
+CapstoneServicesIntegrationTest.kt
+UsersControllerIntegrationTest.kt
+JwtServiceTest.kt
+```
+
 Testing technologies include:
 
 - JUnit 5
 - JUnit Jupiter
 - Spring Boot Test
 - TestRestTemplate
+- Mockito through Spring Boot Test
 - MongoDB integration testing
 - Transaction testing
 - Concurrency testing
 - Asynchronous operation testing
 - JWT unit testing
 
-The backend contains three main test classes:
-
-```text
-CapstoneServicesIntegrationTest
-UsersControllerIntegrationTest
-JwtServiceTest
-```
-
 ---
 
-### `CapstoneServicesIntegrationTest`
+### `CapstoneServicesIntegrationTest.kt`
 
 Tests the backend service/repository flow against the real MongoDB-backed repository implementation.
 
@@ -1714,36 +1756,38 @@ StatisticsService
 
 Because these tests call services directly rather than going through the protected REST API, JWT authentication is not required for those service calls.
 
-Tests cover operations such as:
+Current tests cover:
 
-- Creating users
-- Retrieving users
-- Duplicate username handling
-- Concurrent signup behavior
+- Signup
+- Duplicate signup rejection
+- Concurrent duplicate signup
+- User creation
+- User existence
+- User deletion
+- Retrieval of existing and non-existing users
+- Correct login credentials
+- Incorrect login credentials
 - BCrypt password storage
-- Authentication behavior
-- Correct and incorrect login credentials
-- Updating user information
-- Password update hashing
-- PATCH operations
-- Updating BMI
-- Updating calories
-- Updating water consumption
-- Retrieving water history
-- Retrieving weekly averages
-- Managing daily goals
+- Water updates
+- Today's water totals
+- Yesterday's water totals
+- Water history
+- Weekly averages
+- Goal updates
+- Invalid goal values
+- Calories
+- Valid and invalid calorie values
 - BMI distribution
-- MongoDB transactions
-- MongoDB upsert behavior
 - `transactionVersion` changes
-- Cascade deletion
-- Delete-vs-write concurrency
+- MongoDB transactions
+- Related-document deletion
+- Delete-vs-water-update concurrency
+- Delete-vs-calories/goal concurrency
 - Orphan-data prevention
-- Asynchronous repository operations
 
 ---
 
-### `UsersControllerIntegrationTest`
+### `UsersControllerIntegrationTest.kt`
 
 Loads the Spring Boot application and sends REST requests using `TestRestTemplate`.
 
@@ -1753,47 +1797,48 @@ The Spring Boot server does not need to be started manually before running these
 
 Protected requests use real JWTs generated by `JwtService`.
 
-Tests cover:
+Current tests cover:
 
-- REST endpoints
+- Health endpoint
 - Signup
+- Duplicate signup
 - Login
-- Login JWT response
-- Request DTOs
-- Response DTOs
-- BCrypt password behavior
-- Protected endpoint access
-- Bearer-token authenticated requests
-- Validation
-- Response bodies
-- HTTP status codes
-- GET requests
-- POST requests
-- PUT requests
-- PATCH requests
-- DELETE requests
-- HEAD requests
-- Water operations
-- BMI operations
-- Calories operations
+- Successful login JSON
+- Invalid login
+- GET all users
+- GET one user
+- Missing user behavior
+- PATCH user
+- Password PATCH and subsequent login
+- DELETE user
+- HEAD user
+- BMI update
+- Water update
+- Water retrieval
+- Water history
+- Weekly averages
 - Daily goals
-- Error handling
+- Invalid goal values
+- BMI distribution
+- Calories
+- HTTP status codes
+- Bearer authentication
 
 ---
 
-### `JwtServiceTest`
+### `JwtServiceTest.kt`
 
-Tests JWT behavior independently from the controller layer.
+Tests JWT behavior independently from the controller and database layers.
 
-Current JWT tests verify areas such as:
+Current JWT tests verify:
 
 ```text
 Token generation
 Valid token acceptance
 Username extraction
 Invalid-token rejection
-Expired-token rejection
 Tampered-token rejection
+Different-algorithm rejection
 ```
 
 JWT tests do not require MongoDB.
@@ -1811,13 +1856,14 @@ The backend includes multiple security mechanisms.
 - Login uses `PasswordEncoder.matches(...)`
 - Updated passwords are re-hashed before storage
 - Passwords are not returned in public user response DTOs
-- Passwords are not included in `User.toString()`
+- Passwords are masked in `User.toString()`
 
 ---
 
 ### JWT Authentication
 
 - Successful login generates a signed JWT
+- JWTs use HS256
 - JWTs contain the username as the token subject
 - JWTs contain issue and expiration timestamps
 - Protected requests require a Bearer token
@@ -1866,15 +1912,16 @@ A production deployment should use a certificate issued by a trusted Certificate
 
 ### MongoDB Security and Integrity
 
-The current local development MongoDB environment provides data-integrity mechanisms including:
+The current local development MongoDB design includes data-integrity mechanisms such as:
 
-- Unique username index
-- Unique daily calorie index
-- Unique daily goal index
+- Unique username indexing
+- Unique daily calorie indexing
+- Unique daily goal indexing
+- Water history indexing
 - MongoDB transactions
 - Shared user-document concurrency writes
-- Transaction retries through `withTransaction(...)`
-- Cascade deletion
+- Transaction retries through `withTransaction { ... }`
+- Cascade-style related-data deletion
 - Application-side input validation
 
 The local MongoDB installation currently runs as a development environment.
@@ -1900,7 +1947,6 @@ Examples:
 ```text
 .env
 application.properties
-local.properties
 *.jks
 *.keystore
 *.p12
@@ -2005,7 +2051,8 @@ to a public repository.
 
 ### Requirements
 
-- Java 23
+- JDK 23
+- Kotlin 1.9.25
 - Maven
 - MongoDB 8
 - MongoDB Shell (`mongosh`) for local administration
@@ -2018,7 +2065,7 @@ to a public repository.
 
 ### Start MongoDB
 
-Make sure the MongoDB Windows service is running.
+Make sure the MongoDB service is running.
 
 The MongoDB configuration should contain:
 
@@ -2062,7 +2109,7 @@ src/main/resources/
 6. Run:
 
 ```text
-src/main/java/org/example/CapstoneProject/Application.java
+src/main/java/org/example/CapstoneProject/Application.kt
 ```
 
 The server starts locally on:
@@ -2127,7 +2174,7 @@ The Spring integration tests automatically start the required application contex
 
 `UsersControllerIntegrationTest` starts an embedded server on a random port, so a manually running Spring Boot server is not required.
 
-MongoDB must still be running because integration tests use the real MongoDB repository implementations.
+MongoDB must still be running because the MongoDB integration tests use the real MongoDB repository implementations.
 
 The local MongoDB replica set must be available for transaction-related tests.
 
@@ -2139,35 +2186,64 @@ The local MongoDB replica set must be available for transaction-related tests.
 
 ## 🛠 Technologies
 
-- Java 23
-- Spring Boot 3.5
+### Language and Runtime
+
+- Kotlin 1.9.25
+- JDK 23
+
+### Backend Framework
+
+- Spring Boot 3.5.16
 - Spring Web
 - Spring Security Crypto
-- BCrypt
 - Jakarta Bean Validation
 - Maven
-- REST API
-- HTTPS / TLS
-- PKCS#12
+
+### Database
+
 - MongoDB 8
-- MongoDB Java Driver
+- MongoDB synchronous JVM driver (`mongodb-driver-sync`)
 - BSON
 - MongoDB transactions
 - MongoDB upsert
 - MongoDB replica set
-- Nimbus JOSE + JWT
-- CompletableFuture
+
+### Security
+
+- BCrypt
+- Nimbus JOSE + JWT 10.9
+- HS256 JWT signing
+- HTTPS / TLS
+- PKCS#12
+
+### Asynchronous API Contracts
+
+- `CompletableFuture`
+
+### Testing
+
 - JUnit 5
 - JUnit Jupiter
 - Spring Boot Test
 - TestRestTemplate
-- Java Keytool
+- MongoDB integration testing
+- Transaction testing
+- Concurrency testing
+- JWT unit testing
+
+### Development Tools
+
+- IntelliJ IDEA
+- Maven
 - MongoDB Shell (`mongosh`)
+- JDK `keytool`
 
 ---
 
 ## 🏗 Key Backend Design Features
 
+- Kotlin-only backend source code
+- Kotlin Spring Boot application
 - Layered backend architecture
 - Controller / Service / Repository separation
 - Repository interfaces
@@ -2180,10 +2256,12 @@ The local MongoDB replica set must be available for transaction-related tests.
 - Request DTOs
 - Response DTOs
 - Login-specific response DTO containing JWT
+- Dynamic PATCH handling
 - Jakarta Bean Validation
 - Manual PATCH type validation
 - Global exception handling
 - JWT authentication
+- HS256 token validation
 - User-specific JWT authorization
 - Stateless access-token validation
 - HTTPS/TLS communication
@@ -2191,10 +2269,10 @@ The local MongoDB replica set must be available for transaction-related tests.
 - Self-signed development certificate
 - Private server key excluded from version control
 - Android-compatible local certificate trust
-- Synchronous MongoDB Java Driver
+- Synchronous MongoDB JVM driver
 - `CompletableFuture` repository execution
 - MongoDB multi-document transactions
-- `withTransaction(...)` retry behavior
+- `withTransaction { ... }` retry behavior
 - Shared `transactionVersion` concurrency mechanism
 - MongoDB upserts
 - Compound indexes
@@ -2203,7 +2281,7 @@ The local MongoDB replica set must be available for transaction-related tests.
 - Transaction-safe calorie updates
 - Transaction-safe goal updates
 - Transaction-safe user deletion
-- Cascade deletion
+- Related-data deletion
 - Individual water-record document model
 - Daily calorie history
 - Daily goal history
@@ -2296,7 +2374,7 @@ MongoDB transactions
 transactionVersion
 → Shared concurrency point
 
-withTransaction(...)
+withTransaction { ... }
 → Retry handling for eligible transient transaction failures
 ```
 
