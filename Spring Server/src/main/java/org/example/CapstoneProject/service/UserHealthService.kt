@@ -6,7 +6,6 @@ import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
 // Contains business logic related to user health data.
-//
 // This service handles BMI and calorie-related operations.
 // It depends only on the UserRepository interface and does not depend
 // on a specific database or repository implementation.

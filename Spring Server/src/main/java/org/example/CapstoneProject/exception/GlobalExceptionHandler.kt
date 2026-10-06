@@ -22,15 +22,14 @@ class GlobalExceptionHandler {
     // message for each invalid field.
     // ---------------------------------------------------------------------
     @ExceptionHandler(MethodArgumentNotValidException::class)
-    fun handleValidationException(ex: MethodArgumentNotValidException
-    ): ResponseEntity<Map<String, Any?>> {
+    fun handleValidationException(ex: MethodArgumentNotValidException): ResponseEntity<Map<String, Any?>> {
         // Store validation messages by field name.
         val errors = LinkedHashMap<String, String?>()
         // Read all field validation errors from the exception.
         ex.bindingResult.fieldErrors.forEach { error ->
                 // Store the validation message under the invalid field name.
                 errors[error.field] = error.defaultMessage
-            }
+        }
 
         // Build the response body.
         val response = LinkedHashMap<String, Any?>()

@@ -13,12 +13,9 @@ import org.springframework.security.crypto.password.PasswordEncoder
 // -------------------------------------------------------------------------
 @Configuration
 class PasswordConfiguration {
-
     // ---------------------------------------------------------------------
     // Creates the shared PasswordEncoder used by the application.
     // ---------------------------------------------------------------------
     @Bean
-    fun passwordEncoder(): PasswordEncoder {
-        return BCryptPasswordEncoder()
-    }
+    fun passwordEncoder(): PasswordEncoder { return BCryptPasswordEncoder() }
 }

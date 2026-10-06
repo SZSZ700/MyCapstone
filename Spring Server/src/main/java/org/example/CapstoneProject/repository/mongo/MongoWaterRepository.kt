@@ -1,4 +1,4 @@
-@file:Suppress("PackageName", "IfThenToElvis")
+@file:Suppress("PackageName", "IfThenToElvis", "FoldInitializerAndIfToElvis")
 package org.example.CapstoneProject.repository.mongo
 import com.mongodb.client.ClientSession
 import com.mongodb.client.MongoClient
@@ -29,11 +29,8 @@ private const val DEFAULT_GOAL_ML = 3000
 
 // -------------------------------------------------------------------------
 // Low-level MongoDB implementation of WaterRepository.
-//
 // Each water drink is stored as a separate document.
-//
 // Example water document:
-//
 // {
 //     _id: ObjectId(...),
 //     userId: ObjectId(...),
@@ -42,7 +39,6 @@ private const val DEFAULT_GOAL_ML = 3000
 // }
 //
 // Goal history is stored in a separate collection.
-//
 // MongoDB handles:
 // - storage
 // - filtering
@@ -58,12 +54,9 @@ private const val DEFAULT_GOAL_ML = 3000
 // -------------------------------------------------------------------------
 @Suppress("unused")
 @Repository
-class MongoWaterRepository(
-    database: MongoDatabase,
-
+class MongoWaterRepository(database: MongoDatabase,
     // MongoClient is used to create sessions for MongoDB transactions.
-    private val mongoClient: MongoClient
-) : WaterRepository {
+    private val mongoClient: MongoClient) : WaterRepository {
 
     // Hold the users collection.
     private val users: MongoCollection<Document> = database.getCollection("users")
@@ -128,12 +121,8 @@ class MongoWaterRepository(
                             false
                         } else {
                             // Insert one new water record inside the transaction.
-                            waterRecords.insertOne(
-                                session,
-                                Document("userId", userId)
-                                    .append("amountMl", waterAmount)
-                                    .append("recordedAt", Date())
-                            )
+                            waterRecords.insertOne(session,
+                                Document("userId", userId).append("amountMl", waterAmount).append("recordedAt", Date()))
 
                             // Returning true allows withTransaction()
                             // to commit the transaction.
@@ -205,29 +194,22 @@ class MongoWaterRepository(
                     val amount = document.get("amountMl", Number::class.java)
 
                     // Ignore malformed or incomplete records.
-                    if (recordedAt == null || amount == null) {
-                        continue
-                    }
+                    if (recordedAt == null || amount == null) { continue }
 
                     // Convert MongoDB's timestamp into LocalDate.
                     val recordDate = toLocalDate(recordedAt)
 
                     // Add the amount to today's total.
-                    if (recordDate == today) {
-                        todayWater += amount.toLong()
-                    }
+                    if (recordDate == today) { todayWater += amount.toLong() }
                     // Add the amount to yesterday's total.
-                    else if (recordDate == yesterday) {
-                        yesterdayWater += amount.toLong()
-                    }
+                    else if (recordDate == yesterday) { yesterdayWater += amount.toLong() }
                 }
 
                 // Build the same JSON response used by the existing application.
                 val result = JSONObject()
-
                 result.put("todayWater", todayWater)
                 result.put("yesterdayWater", yesterdayWater)
-
+                // returnt the result
                 result
             }
         }
@@ -235,9 +217,7 @@ class MongoWaterRepository(
 
     // ---------------------------------------------------------------------
     // Returns the user's water history for the requested number of days.
-    //
     // Mongo raw:
-    //
     // db.water_records.aggregate([
     //     {
     //         $match: {
@@ -267,10 +247,7 @@ class MongoWaterRepository(
     // MongoDB therefore performs the daily calculation directly
     // instead of returning every individual drink to Kotlin.
     // ---------------------------------------------------------------------
-    override fun getWaterHistoryMap(
-        username: String,
-        days: Int
-    ): CompletableFuture<Map<String, Long>?> {
+    override fun getWaterHistoryMap(username: String, days: Int): CompletableFuture<Map<String, Long>?> {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync<Map<String, Long>?> {
             // Resolve the supplied username into MongoDB's ObjectId.
@@ -307,22 +284,16 @@ class MongoWaterRepository(
                             // $match reduces the records to only:
                             // - the requested user
                             // - the requested date range
-                            match(and(
-                                    eq("userId", userId),
-                                    gte("recordedAt", start),
-                                    lt("recordedAt", end)
-                                )
+                            match(and(eq("userId", userId),
+                                gte("recordedAt", start),
+                                lt("recordedAt", end))
                             ),
 
                             // $dateToString converts the BSON Date into a yyyy-MM-dd key.
                             // $group then groups those records by local date
                             // and sums amountMl for each date.
-                            group(
-                                Document(
-                                    "\$dateToString",
-                                    Document("format", "%Y-%m-%d")
-                                        .append("date", "\$recordedAt")
-                                        .append("timezone", "Asia/Jerusalem")
+                            group(Document("\$dateToString",
+                                    Document("format", "%Y-%m-%d").append("date", "\$recordedAt").append("timezone", "Asia/Jerusalem")
                                 ),
 
                                 // Sum all amountMl values belonging to the same date.
@@ -380,7 +351,6 @@ class MongoWaterRepository(
     //
     // Important:
     // Days without water records are NOT included in the average denominator.
-    //
     // This preserves the previous behavior.
     // ---------------------------------------------------------------------
     override fun getWeeklyAverages(username: String): CompletableFuture<Map<String, Int>> {
@@ -405,8 +375,7 @@ class MongoWaterRepository(
 
                 // Read all water documents from the last 28 days.
                 for (document in waterRecords.find(
-                    and(
-                        eq("userId", userId),
+                    and(eq("userId", userId),
                         gte("recordedAt", start),
                         lt("recordedAt", end)
                     )
@@ -463,11 +432,7 @@ class MongoWaterRepository(
                 // Convert the four internal buckets into Week 4 ... Week 1.
                 for (week in 0 until 4) {
                     // Preserve integer division from the previous implementation.
-                    val average = if (counts[week] > 0) {
-                        (sums[week] / counts[week]).toInt()
-                    } else {
-                        0
-                    }
+                    val average = if (counts[week] > 0) { (sums[week] / counts[week]).toInt() } else { 0 }
 
                     // Bucket 0 becomes Week 4,
                     // bucket 1 becomes Week 3, etc.
@@ -493,7 +458,6 @@ class MongoWaterRepository(
     // .limit(1)
     //
     // recordDate is stored as yyyy-MM-dd.
-    //
     // Because this format is year-month-day,
     // alphabetical order is also chronological order.
     //
@@ -512,8 +476,7 @@ class MongoWaterRepository(
             } else {
                 // Find the newest goal for this user.
                 val goalDocument = goals.find(eq("userId", userId))
-                    .sort(Document("recordDate", -1))
-                    .first()
+                    .sort(Document("recordDate", -1)).first()
 
                 // Use the default when no goal exists.
                 if (goalDocument == null) {
@@ -536,17 +499,13 @@ class MongoWaterRepository(
     // 3. Insert today's goal automatically when it does not exist.
     //
     // upsert(true) means:
-    //
     // - If today's goal exists -> update it.
     // - If today's goal does not exist -> insert it.
-    //
     // Older goal documents remain stored as history.
-    //
     // withTransaction() manages transaction start, commit, abort
     // and eligible transient transaction retries.
     //
     // Mongo raw:
-    //
     // session.withTransaction(() -> {
     //
     //     db.users.findOneAndUpdate(
@@ -569,7 +528,6 @@ class MongoWaterRepository(
     //         }
     //     )
     // })
-    //
     // Returns false for invalid values or missing users.
     // ---------------------------------------------------------------------
     override fun updateGoalMl(username: String, goalMl: Int): CompletableFuture<Boolean> {
@@ -599,12 +557,9 @@ class MongoWaterRepository(
                             // MongoDB creates it automatically.
                             goals.updateOne(
                                 session,
-                                and(
-                                    eq("userId", userId),
+                                and(eq("userId", userId),
                                     eq("recordDate", today)
-                                ),
-                                set("goalMl", goalMl),
-                                UpdateOptions().upsert(true)
+                                ), set("goalMl", goalMl), UpdateOptions().upsert(true)
                             )
 
                             // Returning true allows withTransaction()
@@ -655,43 +610,29 @@ class MongoWaterRepository(
     // MongoDB stores this as a BSON Date.
     // ---------------------------------------------------------------------
     private fun startOfDay(date: LocalDate): Date {
-        return Date.from(
-            date.atStartOfDay(ZoneId.systemDefault()).toInstant()
-        )
+        return Date.from(date.atStartOfDay(ZoneId.systemDefault()).toInstant())
     }
 
     // ---------------------------------------------------------------------
     // Converts MongoDB's BSON Date back into LocalDate.
-    //
     // The application's local timezone is used when converting
     // the timestamp into a calendar day.
     // ---------------------------------------------------------------------
     private fun toLocalDate(date: Date): LocalDate {
-        return date.toInstant()
-            .atZone(ZoneId.systemDefault())
-            .toLocalDate()
+        return date.toInstant().atZone(ZoneId.systemDefault()).toLocalDate()
     }
 
     // ---------------------------------------------------------------------
     // Finds the ObjectId belonging to a username inside a MongoDB session.
-    //
     // Mongo raw:
-    //
     // db.users.findOne({
     //     username: username
     // })
-    //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
-    private fun findUserId(
-        session: ClientSession,
-        username: String
-    ): ObjectId? {
+    private fun findUserId(session: ClientSession, username: String): ObjectId? {
         // Find the matching user document using the current transaction session.
-        val document = users.find(
-            session,
-            eq("username", username)
-        ).first()
+        val document = users.find(session, eq("username", username)).first()
 
         if (document == null) { return null }
 
@@ -734,8 +675,7 @@ class MongoWaterRepository(
     private fun lockAndFindUserId(session: ClientSession, username: String): ObjectId? {
         // Find the user and increment transactionVersion
         // inside the current transaction.
-        val document = users.findOneAndUpdate(
-            session,
+        val document = users.findOneAndUpdate(session,
             eq("username", username),
             inc("transactionVersion", 1)
         )

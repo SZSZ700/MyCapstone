@@ -1,4 +1,4 @@
-@file:Suppress("PackageName")
+@file:Suppress("PackageName", "FoldInitializerAndIfToElvis")
 package CapstoneTests
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
@@ -32,13 +32,10 @@ import java.util.concurrent.TimeUnit
 
 // -------------------------------------------------------------------------
 // End-to-end service integration tests.
-//
 // These tests load the real Spring application context and exercise the
 // service layer together with the real repository implementation and MongoDB.
-//
 // The tests intentionally call the services instead of the REST controller.
 // This lets the suite verify:
-//
 // - user creation, update and deletion
 // - BCrypt password handling
 // - signup and login behavior
@@ -50,7 +47,6 @@ import java.util.concurrent.TimeUnit
 // - MongoDB transactionVersion behavior
 // - transaction-based deletion of related documents
 // - concurrency between delete and user-related writes
-//
 // IMPORTANT:
 // MongoDB transactions require the MongoDB server used by these tests
 // to run as a replica set. A standalone MongoDB server cannot execute
@@ -59,10 +55,8 @@ import java.util.concurrent.TimeUnit
 
 // Load the complete Spring Boot application context.
 @SpringBootTest(classes = [Application::class])
-
 // Use one test class instance so @BeforeAll and @AfterAll can be regular methods.
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-
 // Run the test methods on the same JUnit execution thread.
 @Execution(ExecutionMode.SAME_THREAD)
 class CapstoneServicesIntegrationTest {
@@ -70,30 +64,24 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     // Real application services injected from the Spring context.
     // ---------------------------------------------------------------------
-
     // Ask Spring to inject the real UserService bean.
     @Autowired
     private lateinit var userService: UserService
-
     // Ask Spring to inject the real AuthenticationService bean.
     @Autowired
     private lateinit var authenticationService: AuthenticationService
-
     // Ask Spring to inject the real WaterService bean.
     @Autowired
     private lateinit var waterService: WaterService
-
     // Ask Spring to inject the real UserHealthService bean.
     @Autowired
     private lateinit var userHealthService: UserHealthService
-
     // Ask Spring to inject the real StatisticsService bean.
     @Autowired
     private lateinit var statisticsService: StatisticsService
 
     // PasswordEncoder is used only to verify that stored BCrypt hashes
     // match the original raw passwords.
-    //
     // UserService and AuthenticationService are responsible for performing
     // the actual BCrypt encoding before persistence.
 
@@ -150,10 +138,7 @@ class CapstoneServicesIntegrationTest {
         val created = future.get(20, TimeUnit.SECONDS)
 
         // Fail the test immediately when the user could not be created.
-        assertTrue(
-            created,
-            "Failed to create test user: ${user.userName}"
-        )
+        assertTrue(created, "Failed to create test user: ${user.userName}")
 
         // Add the username to the cleanup set.
         createdUsernames.add(user.userName!!)
@@ -193,19 +178,14 @@ class CapstoneServicesIntegrationTest {
 
     // ---------------------------------------------------------------------
     // Resolves a username into its MongoDB ObjectId.
-    //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     private fun getUserIdFromMongo(username: String): ObjectId? {
         // Find the user document whose username matches the supplied value.
-        val document = usersCollection().find(
-            eq("username", username)
-        ).first()
+        val document = usersCollection().find(eq("username", username)).first()
 
         // Return null when the user does not exist.
-        if (document == null) {
-            return null
-        }
+        if (document == null) { return null }
 
         // Return MongoDB's generated ObjectId.
         return document.getObjectId("_id")
@@ -223,14 +203,10 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     private fun getTransactionVersion(username: String): Long {
         // Find the requested user document.
-        val document = usersCollection().find(
-            eq("username", username)
-        ).first()
+        val document = usersCollection().find(eq("username", username)).first()
 
         // Return -1 when the user does not exist.
-        if (document == null) {
-            return -1
-        }
+        if (document == null) { return -1 }
 
         // Read transactionVersion as Number to support BSON numeric types.
         val version = document.get("transactionVersion", Number::class.java)
@@ -281,9 +257,7 @@ class CapstoneServicesIntegrationTest {
 
             } catch (e: Exception) {
                 // Print a warning instead of stopping the remaining cleanup.
-                println(
-                    "WARN cleanup failed for username=$username message=${e.message}"
-                )
+                println("WARN cleanup failed for username=$username message=${e.message}")
             }
         }
     }
@@ -301,12 +275,9 @@ class CapstoneServicesIntegrationTest {
     @Test
     fun signup_createsNewUserAndRejectsDuplicate() {
         // Create a unique username for this signup test.
-        val uniqueUsername =
-            "signupUser_${System.currentTimeMillis()}"
-
+        val uniqueUsername = "signupUser_${System.currentTimeMillis()}"
         // Define the raw password sent during signup.
         val rawPassword = "signupPass"
-
         // Create the signup User object.
         val signupUser = User()
         // Assign the unique username.
@@ -319,10 +290,7 @@ class CapstoneServicesIntegrationTest {
         signupUser.age = 25
 
         // Execute the first signup request and wait for its result.
-        val firstResult = authenticationService
-            .signup(signupUser)
-            .get(20, TimeUnit.SECONDS)
-
+        val firstResult = authenticationService.signup(signupUser).get(20, TimeUnit.SECONDS)
         // Verify that the first signup succeeds.
         assertEquals("User created successfully", firstResult)
 
@@ -330,49 +298,33 @@ class CapstoneServicesIntegrationTest {
         createdUsernames.add(uniqueUsername)
 
         // Read the persisted user through UserService.
-        val storedUser = userService
-            .getUser(uniqueUsername)
-            .get(20, TimeUnit.SECONDS)
-
+        val storedUser = userService.getUser(uniqueUsername).get(20, TimeUnit.SECONDS)
         // Verify that the user exists.
         assertNotNull(storedUser)
-
         // Verify that the raw password was not stored directly.
         assertNotEquals(rawPassword, storedUser!!.password)
-
         // Verify that the stored BCrypt hash matches the original password.
-        assertTrue(
-            passwordEncoder.matches(rawPassword,
-                storedUser.password
-            )
-        )
+        assertTrue(passwordEncoder.matches(rawPassword, storedUser.password))
 
         // Attempt to sign up with the same username again.
-        val secondResult = authenticationService
-            .signup(signupUser)
-            .get(20, TimeUnit.SECONDS)
-
+        val secondResult = authenticationService.signup(signupUser).get(20, TimeUnit.SECONDS)
         // Verify that the duplicate signup is rejected.
         assertEquals("Username already exists", secondResult)
     }
 
     // ---------------------------------------------------------------------
     // Verifies concurrent signup protection.
-    //
     // Two signup requests try to create the same username at the same time.
-    //
     // Expected:
     // - exactly one request succeeds
     // - the other request reports that the username already exists
     // - MongoDB contains exactly one document with that username
-    //
     // The UNIQUE username index is the final protection against the race.
     // ---------------------------------------------------------------------
     @Test
     fun signup_concurrentDuplicateRequests_onlyOneUserIsCreated() {
         // Create one username that both concurrent requests will use.
-        val username =
-            "concurrentSignup_${System.currentTimeMillis()}"
+        val username = "concurrentSignup_${System.currentTimeMillis()}"
 
         // Create the first competing user object.
         val userA = User()
@@ -393,16 +345,12 @@ class CapstoneServicesIntegrationTest {
 
         // Create the first asynchronous signup attempt.
         val requestA = CompletableFuture.supplyAsync {
-
             try {
                 // Wait until both concurrent tasks are ready.
                 start.await()
 
                 // Execute the first signup request.
-                authenticationService
-                    .signup(userA)
-                    .get(20, TimeUnit.SECONDS)
-
+                authenticationService.signup(userA).get(20, TimeUnit.SECONDS)
             } catch (e: Exception) {
                 // Convert checked failures into a runtime failure for the future.
                 throw RuntimeException(e)
@@ -411,15 +359,11 @@ class CapstoneServicesIntegrationTest {
 
         // Create the second asynchronous signup attempt.
         val requestB = CompletableFuture.supplyAsync {
-
             try {
                 // Wait until both concurrent tasks are ready.
                 start.await()
-
                 // Execute the second signup request.
-                authenticationService
-                    .signup(userB)
-                    .get(20, TimeUnit.SECONDS)
+                authenticationService.signup(userB).get(20, TimeUnit.SECONDS)
 
             } catch (e: Exception) {
                 // Convert checked failures into a runtime failure for the future.
@@ -432,49 +376,27 @@ class CapstoneServicesIntegrationTest {
 
         // Wait for the first signup result.
         val resultA = requestA.get(20, TimeUnit.SECONDS)
-
         // Wait for the second signup result.
         val resultB = requestB.get(20, TimeUnit.SECONDS)
-
         // Count how many requests succeeded.
         var successCount = 0
-
         // Count how many requests were rejected as duplicates.
         var duplicateCount = 0
-
         // Count the first result as successful when appropriate.
-        if (resultA == "User created successfully") {
-            successCount++
-        }
-
+        if (resultA == "User created successfully") { successCount++ }
         // Count the second result as successful when appropriate.
-        if (resultB == "User created successfully") {
-            successCount++
-        }
-
+        if (resultB == "User created successfully") { successCount++ }
         // Count the first result as a duplicate when appropriate.
-        if (resultA == "Username already exists") {
-            duplicateCount++
-        }
-
+        if (resultA == "Username already exists") { duplicateCount++ }
         // Count the second result as a duplicate when appropriate.
-        if (resultB == "Username already exists") {
-            duplicateCount++
-        }
+        if (resultB == "Username already exists") { duplicateCount++ }
 
         // Verify that exactly one request succeeded.
         assertEquals(1, successCount)
-
         // Verify that exactly one request was rejected as a duplicate.
         assertEquals(1, duplicateCount)
-
         // Verify that MongoDB contains exactly one matching user document.
-        assertEquals(
-            1L,
-            usersCollection().countDocuments(
-                eq("username", username)
-            )
-        )
+        assertEquals(1L, usersCollection().countDocuments(eq("username", username)))
 
         // Register the surviving user for cleanup.
         createdUsernames.add(username)
@@ -482,85 +404,47 @@ class CapstoneServicesIntegrationTest {
 
     // ---------------------------------------------------------------------
     // Verifies direct user creation, existence checking and deletion.
-    //
     // UserService receives the RAW password and performs BCrypt encoding.
     // ---------------------------------------------------------------------
     @Test
     fun createUser_existsAndDeleteUser_flowWorks() {
         // Create a unique username for this flow test.
         val tempUsername = "tempUser_${System.currentTimeMillis()}"
-
         // Define the raw password.
         val rawPassword = "tempPass"
-
         // Create the temporary user.
         val tempUser = User()
-
         // Assign the username.
         tempUser.userName = tempUsername
-
         // Assign the raw password.
         tempUser.password = rawPassword
-
         // Assign a full name.
         tempUser.fullName = "Sasa li"
-
         // Assign an age.
         tempUser.age = 25
 
         // Create the user through UserService.
-        val created = userService
-            .createUser(tempUser)
-            .get(20, TimeUnit.SECONDS)
-
+        val created = userService.createUser(tempUser).get(20, TimeUnit.SECONDS)
         // Verify that creation succeeded.
         assertTrue(created)
 
         // Register the temporary user for cleanup.
         createdUsernames.add(tempUsername)
-
         // Read the stored user.
-        val storedUser = userService
-            .getUser(tempUsername)
-            .get(20, TimeUnit.SECONDS)
+        val storedUser = userService.getUser(tempUsername).get(20, TimeUnit.SECONDS)
 
         // Verify that the stored user exists.
         assertNotNull(storedUser)
-
         // Verify that the stored password differs from the raw password.
-        assertNotEquals(
-            rawPassword,
-            storedUser!!.password
-        )
-
+        assertNotEquals(rawPassword, storedUser!!.password)
         // Verify that the stored BCrypt hash matches the original raw password.
-        assertTrue(
-            passwordEncoder.matches(
-                rawPassword,
-                storedUser.password
-            )
-        )
-
+        assertTrue(passwordEncoder.matches(rawPassword, storedUser.password))
         // Verify that exists() reports the user as present.
-        assertTrue(
-            userService
-                .exists(tempUsername)
-                .get(20, TimeUnit.SECONDS)
-        )
-
+        assertTrue(userService.exists(tempUsername).get(20, TimeUnit.SECONDS))
         // Delete the user.
-        assertTrue(
-            userService
-                .deleteUser(tempUsername)
-                .get(20, TimeUnit.SECONDS)
-        )
-
+        assertTrue(userService.deleteUser(tempUsername).get(20, TimeUnit.SECONDS))
         // Verify that exists() reports the user as absent after deletion.
-        assertFalse(
-            userService
-                .exists(tempUsername)
-                .get(20, TimeUnit.SECONDS)
-        )
+        assertFalse(userService.exists(tempUsername).get(20, TimeUnit.SECONDS))
     }
 
     // ---------------------------------------------------------------------
@@ -591,32 +475,16 @@ class CapstoneServicesIntegrationTest {
     @Test
     fun login_withCorrectCredentials_returnsUser() {
         // Attempt to log in with the correct credentials.
-        val loggedUser = authenticationService
-            .login(testUserName1, "pass1")
-            .get(20, TimeUnit.SECONDS)
+        val loggedUser = authenticationService.login(testUserName1, "pass1").get(20, TimeUnit.SECONDS)
 
         // Verify that authentication succeeded.
         assertNotNull(loggedUser)
-
         // Verify that the returned user has the expected username.
-        assertEquals(
-            testUserName1,
-            loggedUser!!.userName
-        )
-
+        assertEquals(testUserName1, loggedUser!!.userName)
         // Verify that the returned password is not the original raw password.
-        assertNotEquals(
-            "pass1",
-            loggedUser.password
-        )
-
+        assertNotEquals("pass1", loggedUser.password)
         // Verify that the stored hash still matches the original password.
-        assertTrue(
-            passwordEncoder.matches(
-                "pass1",
-                loggedUser.password
-            )
-        )
+        assertTrue(passwordEncoder.matches("pass1", loggedUser.password))
     }
 
     // ---------------------------------------------------------------------
@@ -625,10 +493,7 @@ class CapstoneServicesIntegrationTest {
     @Test
     fun login_withWrongPassword_returnsNull() {
         // Attempt to log in using the wrong password.
-        val loggedUser = authenticationService
-            .login(testUserName1, "wrongPass")
-            .get(20, TimeUnit.SECONDS)
-
+        val loggedUser = authenticationService.login(testUserName1, "wrongPass").get(20, TimeUnit.SECONDS)
         // Verify that authentication fails with null.
         assertNull(loggedUser)
     }
@@ -644,61 +509,40 @@ class CapstoneServicesIntegrationTest {
     @Test
     fun updateWater_increasesTodayTotal_and_getWaterIsConsistent() {
         // Read the user's current water totals before the update.
-        val beforeJson = waterService
-            .getWater(testUserName1)
-            .get(20, TimeUnit.SECONDS)
-
+        val beforeJson = waterService.getWater(testUserName1).get(20, TimeUnit.SECONDS)
         // Verify that the user and water response exist.
         assertNotNull(beforeJson)
 
         // Read today's total before adding another drink.
         val todayBefore = beforeJson!!.getLong("todayWater")
-
         // Define the drink amount that will be added.
         val addedAmount = 500
-
         // Add one new water record.
-        val updated = waterService
-            .updateWater(testUserName1, addedAmount)
-            .get(20, TimeUnit.SECONDS)
-
+        val updated = waterService.updateWater(testUserName1, addedAmount).get(20, TimeUnit.SECONDS)
         // Verify that the water update succeeded.
         assertTrue(updated)
 
         // Read the water totals after the update.
-        val afterJson = waterService
-            .getWater(testUserName1)
-            .get(20, TimeUnit.SECONDS)
-
+        val afterJson = waterService.getWater(testUserName1).get(20, TimeUnit.SECONDS)
         // Verify that a response is still returned.
         assertNotNull(afterJson)
 
         // Read today's new total.
         val todayAfter = afterJson!!.getLong("todayWater")
-
         // Verify that today's total increased by exactly the inserted amount.
-        assertEquals(
-            todayBefore + addedAmount,
-            todayAfter
-        )
+        assertEquals(todayBefore + addedAmount, todayAfter)
 
         // Build today's yyyy-MM-dd history key.
         val todayKey = LocalDate.now().toString()
 
         // Read the last three days of water history.
-        val history = waterService
-            .getWaterHistoryMap(testUserName1, 3)
-            .get(20, TimeUnit.SECONDS)
-
+        val history = waterService.getWaterHistoryMap(testUserName1, 3).get(20, TimeUnit.SECONDS)
         // Verify that history was returned.
         assertNotNull(history)
-
         // Verify that exactly three dates are present.
         assertEquals(3, history!!.size)
-
         // Verify that today's date exists in the history map.
         assertTrue(history.containsKey(todayKey))
-
         // Verify that today's history total matches getWater().
         assertEquals(todayAfter, history[todayKey])
     }
@@ -709,33 +553,24 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun getWaterHistoryMap_forNewUser_returnsAllZerosWithExpectedKeys() {
-
         // Request seven days of history.
         val days = 7
-
         // Create the expected ordered result map.
         val expected = LinkedHashMap<String, Long>()
-
         // Read today's calendar date.
         val today = LocalDate.now()
 
         // Build the expected seven date keys with zero totals.
         for (i in 0 until days) {
-
             // Insert the expected date and zero value.
-            expected[
-                today.minusDays(i.toLong()).toString()
-            ] = 0L
+            expected[today.minusDays(i.toLong()).toString()] = 0L
         }
 
         // Request the actual seven-day history.
-        val actual = waterService
-            .getWaterHistoryMap(testUserName2, days)
-            .get(20, TimeUnit.SECONDS)
+        val actual = waterService.getWaterHistoryMap(testUserName2, days).get(20, TimeUnit.SECONDS)
 
         // Verify that a history map was returned.
         assertNotNull(actual)
-
         // Verify that all expected dates and values match.
         assertEquals(expected, actual)
     }
@@ -746,101 +581,60 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun getWater_forNewUser_returnsZeroTotals() {
-
         // Read the water totals for the fresh baseline user.
-        val json = waterService
-            .getWater(testUserName2)
-            .get(20, TimeUnit.SECONDS)
-
+        val json = waterService.getWater(testUserName2).get(20, TimeUnit.SECONDS)
         // Verify that a response was returned.
         assertNotNull(json)
-
         // Verify that today's total is zero.
         assertEquals(0L, json!!.getLong("todayWater"))
-
         // Verify that yesterday's total is also zero.
         assertEquals(0L, json.getLong("yesterdayWater"))
     }
 
     // ---------------------------------------------------------------------
     // Verifies the MongoDB date-range behavior used by getWater().
-    //
     // The test inserts one record for today and one for yesterday directly
     // into MongoDB, then verifies that the service places each amount into
     // the correct day.
     // ---------------------------------------------------------------------
     @Test
     fun getWater_withTodayAndYesterdayMongoRecords_returnsCorrectTotals() {
-
         // Create a unique username for the date-range test.
-        val username =
-            "waterDateTest_${System.currentTimeMillis()}"
-
+        val username = "waterDateTest_${System.currentTimeMillis()}"
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign the raw password.
         user.password = "waterDatePass"
-
         // Persist the test user.
         createUserOrFail(user)
 
         // Resolve the new user's MongoDB ObjectId.
         val userId = getUserIdFromMongo(username)
-
         // Verify that the user has a MongoDB ObjectId.
         assertNotNull(userId)
 
         // Read today's calendar date.
         val today = LocalDate.now()
-
         // Calculate yesterday's calendar date.
         val yesterday = today.minusDays(1)
-
         // Create a timestamp at noon today.
-        val todayTime = Date.from(
-            today
-                .atTime(12, 0)
-                .atZone(ZoneId.systemDefault())
-                .toInstant()
-        )
-
+        val todayTime = Date.from(today.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant())
         // Create a timestamp at noon yesterday.
-        val yesterdayTime = Date.from(
-            yesterday
-                .atTime(12, 0)
-                .atZone(ZoneId.systemDefault())
-                .toInstant()
-        )
+        val yesterdayTime = Date.from(yesterday.atTime(12, 0).atZone(ZoneId.systemDefault()).toInstant())
 
         // Insert one water document for today.
-        waterRecordsCollection().insertOne(
-            Document("userId", userId!!)
-                .append("amountMl", 700)
-                .append("recordedAt", todayTime)
-        )
-
+        waterRecordsCollection().insertOne(Document("userId", userId!!).append("amountMl", 700).append("recordedAt", todayTime))
         // Insert one water document for yesterday.
-        waterRecordsCollection().insertOne(
-            Document("userId", userId)
-                .append("amountMl", 400)
-                .append("recordedAt", yesterdayTime)
-        )
+        waterRecordsCollection().insertOne(Document("userId", userId).append("amountMl", 400).append("recordedAt", yesterdayTime))
 
         // Read the calculated today/yesterday totals.
-        val result = waterService
-            .getWater(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val result = waterService.getWater(username).get(20, TimeUnit.SECONDS)
         // Verify that the service returned a result.
         assertNotNull(result)
-
         // Verify today's total.
         assertEquals(700L, result!!.getLong("todayWater"))
-
         // Verify yesterday's total.
         assertEquals(400L, result.getLong("yesterdayWater"))
     }
@@ -855,23 +649,15 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun updateGoalMl_changesGoal_and_getGoalMlReadsIt() {
-
         // Define the new valid daily water goal.
         val newGoal = 3200
-
         // Update the first baseline user's goal.
-        val updated = waterService
-            .updateGoalMl(testUserName1, newGoal)
-            .get(20, TimeUnit.SECONDS)
-
+        val updated = waterService.updateGoalMl(testUserName1, newGoal).get(20, TimeUnit.SECONDS)
         // Verify that the update succeeded.
         assertTrue(updated)
 
         // Read the stored goal back from the service.
-        val goalValue = waterService
-            .getGoalMl(testUserName1)
-            .get(20, TimeUnit.SECONDS)
-
+        val goalValue = waterService.getGoalMl(testUserName1).get(20, TimeUnit.SECONDS)
         // Verify that the stored goal matches the requested value.
         assertEquals(newGoal, goalValue)
     }
@@ -882,52 +668,35 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun updateGoalMl_outOfRange_isRejectedAndValueNotChanged() {
-
         // Create a unique username for the invalid-goal test.
-        val username =
-            "goalInvalidDeep_${System.currentTimeMillis()}"
+        val username = "goalInvalidDeep_${System.currentTimeMillis()}"
 
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign a raw password.
         user.password = "p"
-
         // Persist the user.
         createUserOrFail(user)
 
         // Read the original goal value.
-        val before = waterService
-            .getGoalMl(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val before = waterService.getGoalMl(username).get(20, TimeUnit.SECONDS)
         // Verify that a new user starts with the default goal.
         assertEquals(3000, before)
 
         // Attempt to store a value below the allowed range.
-        val low = waterService
-            .updateGoalMl(username, 100)
-            .get(20, TimeUnit.SECONDS)
-
+        val low = waterService.updateGoalMl(username, 100).get(20, TimeUnit.SECONDS)
         // Attempt to store a value above the allowed range.
-        val high = waterService
-            .updateGoalMl(username, 20000)
-            .get(20, TimeUnit.SECONDS)
+        val high = waterService.updateGoalMl(username, 20000).get(20, TimeUnit.SECONDS)
 
         // Verify that the low invalid value was rejected.
         assertFalse(low)
-
         // Verify that the high invalid value was rejected.
         assertFalse(high)
 
         // Read the goal again after both invalid attempts.
-        val after = waterService
-            .getGoalMl(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val after = waterService.getGoalMl(username).get(20, TimeUnit.SECONDS)
         // Verify that the goal was not changed.
         assertEquals(before, after)
     }
@@ -942,23 +711,16 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun updateCalories_setsValue_and_getCaloriesReadsIt() {
-
         // Define the calories value to store.
         val newCalories = 1234
 
         // Update today's calories value.
-        val updated = userHealthService
-            .updateCalories(testUserName1, newCalories)
-            .get(20, TimeUnit.SECONDS)
-
+        val updated = userHealthService.updateCalories(testUserName1, newCalories).get(20, TimeUnit.SECONDS)
         // Verify that the update succeeded.
         assertTrue(updated)
 
         // Read today's calories value back.
-        val calories = userHealthService
-            .getCalories(testUserName1)
-            .get(20, TimeUnit.SECONDS)
-
+        val calories = userHealthService.getCalories(testUserName1).get(20, TimeUnit.SECONDS)
         // Verify that the stored value matches the requested value.
         assertEquals(newCalories, calories)
     }
@@ -968,12 +730,8 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun getCalories_forNewUser_returnsZero() {
-
         // Read today's calories for the fresh baseline user.
-        val calories = userHealthService
-            .getCalories(testUserName2)
-            .get(20, TimeUnit.SECONDS)
-
+        val calories = userHealthService.getCalories(testUserName2).get(20, TimeUnit.SECONDS)
         // Verify that the default value is zero.
         assertEquals(0, calories)
     }
@@ -983,16 +741,10 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun getCalories_userNotFound_returnsZero() {
-
         // Build a username that should not exist.
-        val missingUsername =
-            "noSuchUser_${System.currentTimeMillis()}"
-
+        val missingUsername = "noSuchUser_${System.currentTimeMillis()}"
         // Ask the service for the missing user's calories.
-        val calories = userHealthService
-            .getCalories(missingUsername)
-            .get(20, TimeUnit.SECONDS)
-
+        val calories = userHealthService.getCalories(missingUsername).get(20, TimeUnit.SECONDS)
         // Verify that the service preserves the zero fallback.
         assertEquals(0, calories)
     }
@@ -1004,17 +756,13 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun updateCalories_validAndInvalidValues_behaveAsExpected() {
-
         // Create a unique username for the calorie validation test.
-        val username =
-            "calDeep_${System.currentTimeMillis()}"
+        val username = "calDeep_${System.currentTimeMillis()}"
 
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign a raw password.
         user.password = "p"
 
@@ -1022,50 +770,33 @@ class CapstoneServicesIntegrationTest {
         createUserOrFail(user)
 
         // Read the initial calories value.
-        val initial = userHealthService
-            .getCalories(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val initial = userHealthService.getCalories(username).get(20, TimeUnit.SECONDS)
         // Verify that the initial value is zero.
         assertEquals(0, initial)
 
         // Store one valid calories value.
-        val validUpdated = userHealthService
-            .updateCalories(username, 1200)
-            .get(20, TimeUnit.SECONDS)
-
+        val validUpdated = userHealthService.updateCalories(username, 1200).get(20, TimeUnit.SECONDS)
         // Verify that the valid update succeeded.
         assertTrue(validUpdated)
 
         // Read the value after the valid update.
-        val afterValid = userHealthService
-            .getCalories(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val afterValid = userHealthService.getCalories(username).get(20, TimeUnit.SECONDS)
         // Verify that 1200 was stored.
         assertEquals(1200, afterValid)
 
         // Attempt to store a negative calories value.
-        val invalidLow = userHealthService
-            .updateCalories(username, -5)
-            .get(20, TimeUnit.SECONDS)
+        val invalidLow = userHealthService.updateCalories(username, -5).get(20, TimeUnit.SECONDS)
 
         // Attempt to store a calories value above the allowed maximum.
-        val invalidHigh = userHealthService
-            .updateCalories(username, 50000)
-            .get(20, TimeUnit.SECONDS)
+        val invalidHigh = userHealthService.updateCalories(username, 50000).get(20, TimeUnit.SECONDS)
 
         // Verify that the negative value was rejected.
         assertFalse(invalidLow)
-
         // Verify that the value above the maximum was rejected.
         assertFalse(invalidHigh)
 
         // Read the calories value after the invalid updates.
-        val afterInvalid = userHealthService
-            .getCalories(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val afterInvalid = userHealthService.getCalories(username).get(20, TimeUnit.SECONDS)
         // Verify that the previous valid value was preserved.
         assertEquals(1200, afterInvalid)
     }
@@ -1080,97 +811,59 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     @Test
     fun getBmiDistribution_countsEachBmiCategoryForNewUsers() {
-
         // Read the current BMI distribution before creating new users.
-        val before = statisticsService
-            .getBmiDistribution()
-            .get(20, TimeUnit.SECONDS)
-
+        val before = statisticsService.getBmiDistribution().get(20, TimeUnit.SECONDS)
         // Read the original Underweight count.
         val underBefore = before.getOrDefault("Underweight", 0)
-
         // Read the original Normal count.
         val normalBefore = before.getOrDefault("Normal", 0)
-
         // Read the original Overweight count.
         val overBefore = before.getOrDefault("Overweight", 0)
-
         // Read the original Obese count.
         val obeseBefore = before.getOrDefault("Obese", 0)
 
         // Create one shared unique prefix for all four test users.
-        val prefix =
-            "bmiTestUser_${System.currentTimeMillis()}"
-
+        val prefix = "bmiTestUser_${System.currentTimeMillis()}"
         // Build four unique usernames.
-        val bmiUsers = arrayOf(
-            "${prefix}_u",
-            "${prefix}_n",
-            "${prefix}_o",
-            "${prefix}_ob"
-        )
+        val bmiUsers = arrayOf("${prefix}_u", "${prefix}_n", "${prefix}_o", "${prefix}_ob")
 
         // Define one BMI value for each BMI category.
-        val bmiValues = doubleArrayOf(
-            17.0,
-            22.0,
-            27.0,
-            32.0
-        )
+        val bmiValues = doubleArrayOf(17.0, 22.0, 27.0, 32.0)
 
         // Create one user for every BMI category.
         for (i in bmiUsers.indices) {
-
             // Create the current test user.
             val user = User()
-
             // Assign the current username.
             user.userName = bmiUsers[i]
-
             // Assign a raw password.
             user.password = "bmiPass"
-
             // Persist the current user.
             createUserOrFail(user)
 
             // Update the current user's BMI.
-            val bmiUpdated = userHealthService
-                .updateBmi(
-                    bmiUsers[i],
-                    bmiValues[i]
-                )
-                .get(20, TimeUnit.SECONDS)
-
+            val bmiUpdated = userHealthService.updateBmi(bmiUsers[i], bmiValues[i]).get(20, TimeUnit.SECONDS)
             // Verify that the BMI update succeeded.
             assertTrue(bmiUpdated)
         }
 
         // Read the BMI distribution after creating the four users.
-        val after = statisticsService
-            .getBmiDistribution()
-            .get(20, TimeUnit.SECONDS)
-
+        val after = statisticsService.getBmiDistribution().get(20, TimeUnit.SECONDS)
         // Read the new Underweight count.
         val underAfter = after.getOrDefault("Underweight", 0)
-
         // Read the new Normal count.
         val normalAfter = after.getOrDefault("Normal", 0)
-
         // Read the new Overweight count.
         val overAfter = after.getOrDefault("Overweight", 0)
-
         // Read the new Obese count.
         val obeseAfter = after.getOrDefault("Obese", 0)
 
         // Verify that exactly one Underweight user was added.
         assertEquals(underBefore + 1, underAfter)
-
         // Verify that exactly one Normal user was added.
         assertEquals(normalBefore + 1, normalAfter)
-
         // Verify that exactly one Overweight user was added.
         assertEquals(overBefore + 1, overAfter)
-
         // Verify that exactly one Obese user was added.
         assertEquals(obeseBefore + 1, obeseAfter)
     }
@@ -1182,35 +875,25 @@ class CapstoneServicesIntegrationTest {
     // ---------------------------------------------------------------------
     // Verifies that all user-related write transactions increment the same
     // transactionVersion field on the user document.
-    //
     // This confirms that:
-    //
     // updateWater()
     // updateCalories()
     // updateGoalMl()
-    //
     // all perform a write against the same users document before writing
     // their related collection data.
-    //
     // This shared write is what allows MongoDB to detect write conflicts
     // against deleteByUsername() when operations overlap.
     // ---------------------------------------------------------------------
     @Test
     fun userRelatedWriteTransactions_incrementTransactionVersion() {
-
         // Create a unique username for the transactionVersion test.
-        val username =
-            "transactionVersion_${System.currentTimeMillis()}"
-
+        val username = "transactionVersion_${System.currentTimeMillis()}"
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign a raw password.
         user.password = "transactionPass"
-
         // Persist the test user.
         createUserOrFail(user)
 
@@ -1219,211 +902,114 @@ class CapstoneServicesIntegrationTest {
 
         // Verify that the user exists and has a readable transactionVersion.
         assertTrue(initialVersion >= 0)
-
         // Perform one transactional water update.
-        assertTrue(
-            waterService
-                .updateWater(username, 250)
-                .get(20, TimeUnit.SECONDS)
-        )
+        assertTrue(waterService.updateWater(username, 250).get(20, TimeUnit.SECONDS))
 
         // Read transactionVersion after the water update.
         val afterWater = getTransactionVersion(username)
-
         // Verify that updateWater incremented the version exactly once.
         assertEquals(initialVersion + 1, afterWater)
-
         // Perform one transactional calorie update.
-        assertTrue(
-            userHealthService
-                .updateCalories(username, 1800)
-                .get(20, TimeUnit.SECONDS)
-        )
+        assertTrue(userHealthService.updateCalories(username, 1800).get(20, TimeUnit.SECONDS))
 
         // Read transactionVersion after the calories update.
         val afterCalories = getTransactionVersion(username)
-
         // Verify that updateCalories incremented the version exactly once.
         assertEquals(afterWater + 1, afterCalories)
-
         // Perform one transactional goal update.
-        assertTrue(
-            waterService
-                .updateGoalMl(username, 3000)
-                .get(20, TimeUnit.SECONDS)
-        )
+        assertTrue(waterService.updateGoalMl(username, 3000).get(20, TimeUnit.SECONDS))
 
         // Read transactionVersion after the goal update.
         val afterGoal = getTransactionVersion(username)
-
         // Verify that updateGoalMl incremented the version exactly once.
         assertEquals(afterCalories + 1, afterGoal)
     }
 
     // ---------------------------------------------------------------------
     // Verifies the delete transaction across all related MongoDB collections.
-    //
     // Before deletion, the test creates:
     // - one user
     // - one water record
     // - one calories record
     // - one goal record
-    //
     // deleteUser() must remove everything as one logical operation.
     // ---------------------------------------------------------------------
     @Test
     fun deleteUser_removesRelatedMongoDocuments() {
-
         // Create a unique username for the delete transaction test.
-        val username =
-            "deleteTransaction_${System.currentTimeMillis()}"
-
+        val username = "deleteTransaction_${System.currentTimeMillis()}"
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign a raw password.
         user.password = "deletePass"
-
         // Persist the test user.
         createUserOrFail(user)
 
         // Resolve the user's MongoDB ObjectId.
         val userId = getUserIdFromMongo(username)
-
         // Verify that the user exists in MongoDB.
         assertNotNull(userId)
-
         // Create one related water document.
-        assertTrue(
-            waterService
-                .updateWater(username, 500)
-                .get(20, TimeUnit.SECONDS)
-        )
-
+        assertTrue(waterService.updateWater(username, 500).get(20, TimeUnit.SECONDS))
         // Create today's related calories document.
-        assertTrue(
-            userHealthService
-                .updateCalories(username, 2200)
-                .get(20, TimeUnit.SECONDS)
-        )
-
+        assertTrue(userHealthService.updateCalories(username, 2200).get(20, TimeUnit.SECONDS))
         // Create today's related goal document.
-        assertTrue(
-            waterService
-                .updateGoalMl(username, 3300)
-                .get(20, TimeUnit.SECONDS)
-        )
-
+        assertTrue(waterService.updateGoalMl(username, 3300).get(20, TimeUnit.SECONDS))
         // Verify that at least one related water document exists.
-        assertTrue(
-            waterRecordsCollection().countDocuments(
-                eq("userId", userId!!)
-            ) > 0
-        )
-
+        assertTrue(waterRecordsCollection().countDocuments(eq("userId", userId!!)) > 0)
         // Verify that at least one related calories document exists.
-        assertTrue(
-            caloriesCollection().countDocuments(
-                eq("userId", userId)
-            ) > 0
-        )
-
+        assertTrue(caloriesCollection().countDocuments(eq("userId", userId)) > 0)
         // Verify that at least one related goal document exists.
-        assertTrue(
-            goalsCollection().countDocuments(
-                eq("userId", userId)
-            ) > 0
-        )
+        assertTrue(goalsCollection().countDocuments(eq("userId", userId)) > 0)
 
         // Delete the user through the normal service path.
-        val deleted = userService
-            .deleteUser(username)
-            .get(20, TimeUnit.SECONDS)
-
+        val deleted = userService.deleteUser(username).get(20, TimeUnit.SECONDS)
         // Verify that the delete operation succeeded.
         assertTrue(deleted)
-
         // Verify that the main user document was deleted.
-        assertNull(
-            usersCollection().find(
-                eq("_id", userId)
-            ).first()
-        )
-
+        assertNull(usersCollection().find(eq("_id", userId)).first())
         // Verify that no related water documents remain.
-        assertEquals(
-            0L,
-            waterRecordsCollection().countDocuments(
-                eq("userId", userId)
-            )
-        )
-
+        assertEquals(0L, waterRecordsCollection().countDocuments(eq("userId", userId)))
         // Verify that no related calories documents remain.
-        assertEquals(
-            0L,
-            caloriesCollection().countDocuments(
-                eq("userId", userId)
-            )
-        )
-
+        assertEquals(0L, caloriesCollection().countDocuments(eq("userId", userId)))
         // Verify that no related goal documents remain.
-        assertEquals(
-            0L,
-            goalsCollection().countDocuments(
-                eq("userId", userId)
-            )
-        )
+        assertEquals(0L, goalsCollection().countDocuments(eq("userId", userId)))
     }
 
     // ---------------------------------------------------------------------
     // Verifies concurrency between deleteByUsername() and updateWater().
-    //
     // Both operations use a transaction and both write transactionVersion
     // on the same user document.
-    //
     // Under real concurrency, MongoDB may allow one transaction to commit
     // and make the other transaction fail with a transient write conflict.
-    //
     // This test does NOT require both operations to succeed.
-    //
     // The important consistency rule is:
-    //
     // If the user was deleted, there must not be any water record left
     // referencing the deleted user's ObjectId.
-    //
     // That is the orphan-document race condition we want to prevent.
     // ---------------------------------------------------------------------
     @Test
     fun concurrentDeleteAndWaterUpdate_neverLeaveOrphanWaterRecord() {
-
         // Create a unique username for this concurrency test.
-        val username =
-            "deleteWaterRace_${System.currentTimeMillis()}"
-
+        val username = "deleteWaterRace_${System.currentTimeMillis()}"
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign a raw password.
         user.password = "racePass"
-
         // Persist the test user.
         createUserOrFail(user)
 
         // Resolve the user's MongoDB ObjectId before the race starts.
         val userId = getUserIdFromMongo(username)
-
         // Verify that the ObjectId exists.
         assertNotNull(userId)
 
         // Create a latch so both operations begin together.
         val start = CountDownLatch(1)
-
         // Create the concurrent delete attempt.
         val deleteAttempt = CompletableFuture.supplyAsync<Any> {
 
@@ -1432,9 +1018,7 @@ class CapstoneServicesIntegrationTest {
                 start.await()
 
                 // Attempt to delete the user.
-                userService
-                    .deleteUser(username)
-                    .get(20, TimeUnit.SECONDS)
+                userService.deleteUser(username).get(20, TimeUnit.SECONDS)
 
             } catch (e: Exception) {
                 // Preserve the exception as the future result.
@@ -1444,16 +1028,11 @@ class CapstoneServicesIntegrationTest {
 
         // Create the concurrent water update attempt.
         val waterAttempt = CompletableFuture.supplyAsync<Any> {
-
             try {
                 // Wait for the shared start signal.
                 start.await()
-
                 // Attempt to insert a water record.
-                waterService
-                    .updateWater(username, 650)
-                    .get(20, TimeUnit.SECONDS)
-
+                waterService.updateWater(username, 650).get(20, TimeUnit.SECONDS)
             } catch (e: Exception) {
                 // Preserve the exception as the future result.
                 e
@@ -1462,27 +1041,19 @@ class CapstoneServicesIntegrationTest {
 
         // Release both concurrent operations.
         start.countDown()
-
         // Wait for the delete attempt to finish.
         deleteAttempt.get(20, TimeUnit.SECONDS)
-
         // Wait for the water update attempt to finish.
         waterAttempt.get(20, TimeUnit.SECONDS)
 
         // Read the user document after both operations finish.
-        val userDocument = usersCollection().find(
-            eq("_id", userId!!)
-        ).first()
-
+        val userDocument = usersCollection().find(eq("_id", userId!!)).first()
         // Count water records that still reference the original userId.
-        val waterCount = waterRecordsCollection().countDocuments(
-            eq("userId", userId)
-        )
+        val waterCount = waterRecordsCollection().countDocuments(eq("userId", userId))
 
         // If delete won and the user no longer exists, the transaction
         // protection must ensure that no orphan water record remains.
         if (userDocument == null) {
-
             // Verify that no orphan water record exists.
             assertEquals(0L, waterCount)
         }
@@ -1492,72 +1063,50 @@ class CapstoneServicesIntegrationTest {
         // consistent because the related water document still references
         // a valid user.
         else {
-
             // Verify that the surviving document belongs to the expected user.
-            assertEquals(
-                username,
-                userDocument.getString("username")
-            )
+            assertEquals(username, userDocument.getString("username"))
         }
     }
 
     // ---------------------------------------------------------------------
     // Verifies concurrency between deleteByUsername() and the two daily
     // history write operations:
-    //
     // - updateCalories()
     // - updateGoalMl()
-    //
     // The test starts all operations together.
-    //
     // Some transactions may fail because MongoDB detects a write conflict.
     // That is acceptable.
-    //
     // The required invariant is:
-    //
     // When the user document is gone, no calories or goal document may
     // remain with that deleted userId.
     // ---------------------------------------------------------------------
     @Test
     fun concurrentDeleteCaloriesAndGoalUpdates_neverLeaveOrphanDocuments() {
-
         // Create a unique username for the health-data concurrency test.
-        val username =
-            "deleteHealthRace_${System.currentTimeMillis()}"
-
+        val username = "deleteHealthRace_${System.currentTimeMillis()}"
         // Create the test user.
         val user = User()
-
         // Assign the username.
         user.userName = username
-
         // Assign a raw password.
         user.password = "racePass"
-
         // Persist the test user.
         createUserOrFail(user)
 
         // Resolve the user's MongoDB ObjectId before the race begins.
         val userId = getUserIdFromMongo(username)
-
         // Verify that the user exists in MongoDB.
         assertNotNull(userId)
 
         // Create a latch so all three operations start together.
         val start = CountDownLatch(1)
-
         // Create the concurrent delete attempt.
         val deleteAttempt = CompletableFuture.supplyAsync<Any> {
-
             try {
                 // Wait for the shared start signal.
                 start.await()
-
                 // Attempt to delete the user.
-                userService
-                    .deleteUser(username)
-                    .get(20, TimeUnit.SECONDS)
-
+                userService.deleteUser(username).get(20, TimeUnit.SECONDS)
             } catch (e: Exception) {
                 // Preserve the exception as the future result.
                 e
@@ -1566,16 +1115,11 @@ class CapstoneServicesIntegrationTest {
 
         // Create the concurrent calories update attempt.
         val caloriesAttempt = CompletableFuture.supplyAsync<Any> {
-
             try {
                 // Wait for the shared start signal.
                 start.await()
-
                 // Attempt to update today's calories.
-                userHealthService
-                    .updateCalories(username, 2100)
-                    .get(20, TimeUnit.SECONDS)
-
+                userHealthService.updateCalories(username, 2100).get(20, TimeUnit.SECONDS)
             } catch (e: Exception) {
                 // Preserve the exception as the future result.
                 e
@@ -1584,16 +1128,11 @@ class CapstoneServicesIntegrationTest {
 
         // Create the concurrent goal update attempt.
         val goalAttempt = CompletableFuture.supplyAsync<Any> {
-
             try {
                 // Wait for the shared start signal.
                 start.await()
-
                 // Attempt to update today's water goal.
-                waterService
-                    .updateGoalMl(username, 3400)
-                    .get(20, TimeUnit.SECONDS)
-
+                waterService.updateGoalMl(username, 3400).get(20, TimeUnit.SECONDS)
             } catch (e: Exception) {
                 // Preserve the exception as the future result.
                 e
@@ -1602,49 +1141,31 @@ class CapstoneServicesIntegrationTest {
 
         // Release all three concurrent operations.
         start.countDown()
-
         // Wait for the delete attempt to finish.
         deleteAttempt.get(20, TimeUnit.SECONDS)
-
         // Wait for the calories update attempt to finish.
         caloriesAttempt.get(20, TimeUnit.SECONDS)
-
         // Wait for the goal update attempt to finish.
         goalAttempt.get(20, TimeUnit.SECONDS)
 
         // Read the user document after all operations finish.
-        val userDocument = usersCollection().find(
-            eq("_id", userId!!)
-        ).first()
-
+        val userDocument = usersCollection().find(eq("_id", userId!!)).first()
         // Count calories documents that still reference the original userId.
-        val caloriesCount = caloriesCollection().countDocuments(
-            eq("userId", userId)
-        )
-
+        val caloriesCount = caloriesCollection().countDocuments(eq("userId", userId))
         // Count goal documents that still reference the original userId.
-        val goalsCount = goalsCollection().countDocuments(
-            eq("userId", userId)
-        )
+        val goalsCount = goalsCollection().countDocuments(eq("userId", userId))
 
         // A deleted user must never have related orphan documents.
         if (userDocument == null) {
-
             // Verify that no orphan calories document remains.
             assertEquals(0L, caloriesCount)
-
             // Verify that no orphan goal document remains.
             assertEquals(0L, goalsCount)
         }
-
         // If delete lost the transaction conflict, the user is still valid.
         else {
-
             // Verify that the surviving user document is the expected one.
-            assertEquals(
-                username,
-                userDocument.getString("username")
-            )
+            assertEquals(username, userDocument.getString("username"))
         }
     }
 }

@@ -12,18 +12,14 @@ import java.util.Date
 
 // -------------------------------------------------------------------------
 // Fake secret used only by automated tests.
-//
 // This value has no relationship to the real JWT_SECRET and is safe
 // to keep inside the test source code.
-//
 // It is intentionally long enough to support both HS256 and HS384.
 // -------------------------------------------------------------------------
-private const val TEST_SECRET =
-    "ThisIsOnlyATestSecretAndItIsLongEnoughForHS384Signing123456789"
+private const val TEST_SECRET = "ThisIsOnlyATestSecretAndItIsLongEnoughForHS384Signing123456789"
 
 // -------------------------------------------------------------------------
 // Tests the JwtService.
-//
 // These tests verify:
 // - JWT generation
 // - JWT validation
@@ -57,7 +53,6 @@ class JwtServiceTest {
     fun validateToken_withValidToken_returnsTrue() {
         // Create the service using the dedicated test secret.
         val jwtService = JwtService(TEST_SECRET)
-
         // Generate a valid token.
         val token = jwtService.generateToken("sharbel343")
 
@@ -104,17 +99,15 @@ class JwtServiceTest {
         val jwtService = JwtService(TEST_SECRET)
         // Generate a valid token.
         val token = jwtService.generateToken("testUser")
+
         // Separate the JWT into header, payload and signature sections.
         val parts = token.split(Regex("\\."))
         // Read the encoded JWT payload section.
         val payload = parts[1]
-
         // Replace the first character of the payload with a different value.
         val replacement = if (payload[0] == 'A') 'B' else 'A'
-
         // Create a modified payload while keeping the remaining characters.
         val tamperedPayload = replacement + payload.substring(1)
-
         // Reconstruct the token using the modified payload
         // while keeping the original header and signature.
         val tamperedToken = "${parts[0]}.$tamperedPayload.${parts[2]}"
@@ -126,7 +119,6 @@ class JwtServiceTest {
     // ---------------------------------------------------------------------
     // Tests that JwtService rejects a correctly signed JWT when it uses
     // HS384 instead of the required HS256 algorithm.
-    //
     // The same test secret is used by both JwtService and the HS384 signer.
     // Therefore, the token is rejected because of the algorithm policy
     // rather than because a different secret was used.
@@ -142,30 +134,19 @@ class JwtServiceTest {
         val expiration = Date(now.time + 60_000)
 
         // Create valid JWT claims.
-        val claims = JWTClaimsSet.Builder()
-            .subject("testUser")
-            .issueTime(now)
-            .expirationTime(expiration)
-            .build()
+        val claims = JWTClaimsSet.Builder().subject("testUser").issueTime(now).expirationTime(expiration).build()
 
         // Create a JWT using HS384 instead of the required HS256 algorithm.
-        val signedJWT = SignedJWT(
-            JWSHeader(JWSAlgorithm.HS384),
-            claims
-        )
+        val signedJWT = SignedJWT(JWSHeader(JWSAlgorithm.HS384), claims)
 
         // Sign the HS384 token using exactly the same test secret
         // used by JwtService.
-        signedJWT.sign(
-            MACSigner(TEST_SECRET)
-        )
+        signedJWT.sign(MACSigner(TEST_SECRET))
 
         // Convert the correctly signed HS384 JWT to compact format.
         val token = signedJWT.serialize()
 
         // Verify that the token is rejected because HS256 is required.
-        assertFalse(
-            jwtService.validateToken(token)
-        )
+        assertFalse(jwtService.validateToken(token))
     }
 }

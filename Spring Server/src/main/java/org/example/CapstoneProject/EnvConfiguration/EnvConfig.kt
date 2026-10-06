@@ -13,23 +13,17 @@ object EnvConfig {
     // Returns the JWT secret used to sign and verify JWT tokens.
     // ---------------------------------------------------------------------
     @JvmStatic
-    fun getJwtSecret(): String {
-        return dotenv["JWT_SECRET"]!!
-    }
+    fun getJwtSecret(): String { return dotenv["JWT_SECRET"]!! }
 
     // ---------------------------------------------------------------------
     // Returns the MongoDB connection URI.
     // ---------------------------------------------------------------------
     @JvmStatic
-    fun getMongoUri(): String {
-        return dotenv["mongodb.uri"]!!
-    }
+    fun getMongoUri(): String { return dotenv["mongodb.uri"]!! }
 
     // ---------------------------------------------------------------------
     // Returns the MongoDB database name.
     // ---------------------------------------------------------------------
     @JvmStatic
-    fun getMongoDatabase(): String {
-        return dotenv["mongodb.database"]!!
-    }
+    fun getMongoDatabase(): String { return dotenv["mongodb.database"]!! }
 }

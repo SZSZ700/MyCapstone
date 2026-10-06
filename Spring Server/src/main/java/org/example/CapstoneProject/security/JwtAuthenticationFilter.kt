@@ -9,21 +9,18 @@ import org.springframework.web.filter.OncePerRequestFilter
 
 // -------------------------------------------------------------------------
 // Validates JWT authentication for protected user-related HTTP requests.
-//
 // Public endpoints:
 // - POST /api/users/login
 // - POST /api/users/signup
 // - GET  /api/users/health
 // - GET  /api/users/stats/bmiDistribution
-//
 // Protected endpoints:
 // - Requests that operate on a specific username.
 // -------------------------------------------------------------------------
 @Component
 class JwtAuthenticationFilter(
     // Service used to validate JWT tokens and extract usernames.
-    private val jwtService: JwtService
-) : OncePerRequestFilter() {
+    private val jwtService: JwtService) : OncePerRequestFilter() {
 
     // ---------------------------------------------------------------------
     // Determines whether JWT authentication should be skipped.
@@ -33,18 +30,8 @@ class JwtAuthenticationFilter(
         val path = request.servletPath
 
         return (
-                // Leave login public.
-                path == "/api/users/login"
-
-                        // Leave signup public.
-                        || path == "/api/users/signup"
-
-                        // Leave the health endpoint public.
-                        || path == "/api/users/health"
-
-                        // Leave the global BMI statistics endpoint public.
-                        || path == "/api/users/stats/bmiDistribution"
-
+                // Leave login, signup, health, global BMI statistics endpoints public.
+                path == "/api/users/login" || path == "/api/users/signup" || path == "/api/users/health" || path == "/api/users/stats/bmiDistribution"
                         // Protect only routes under /api/users/.
                         || !path.startsWith("/api/users/")
                 )
@@ -52,27 +39,19 @@ class JwtAuthenticationFilter(
 
     // ---------------------------------------------------------------------
     // Validates the Authorization header and JWT.
-    //
     // This function checks four cases:
     // 1. Header is null or does not start with "Bearer ".
     // 2. JWT is invalid or expired.
     // 3. Token does not contain a username.
     // 4. Token does not belong to the requested user.
     // ---------------------------------------------------------------------
-    override fun doFilterInternal(
-        request: HttpServletRequest,
-        response: HttpServletResponse,
-        filterChain: FilterChain
-    ) {
+    override fun doFilterInternal(request: HttpServletRequest, response: HttpServletResponse, filterChain: FilterChain) {
         // Read the Authorization header.
         val header = request.getHeader("Authorization")
 
         // Reject requests without a Bearer token.
         if (header == null || !header.startsWith("Bearer ")) {
-            response.sendError(
-                HttpServletResponse.SC_UNAUTHORIZED,
-                "Missing or invalid Authorization header"
-            )
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Missing or invalid Authorization header")
             return
         }
 
@@ -81,10 +60,7 @@ class JwtAuthenticationFilter(
 
         // Reject an invalid or expired JWT.
         if (!jwtService.validateToken(token)) {
-            response.sendError(
-                HttpServletResponse.SC_UNAUTHORIZED,
-                "Invalid or expired token"
-            )
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid or expired token")
             return
         }
 
@@ -93,10 +69,7 @@ class JwtAuthenticationFilter(
 
         // Reject a token that does not contain a username.
         if (tokenUsername.isNullOrBlank()) {
-            response.sendError(
-                HttpServletResponse.SC_UNAUTHORIZED,
-                "Token does not contain a valid username"
-            )
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token does not contain a valid username")
             return
         }
 
@@ -106,10 +79,7 @@ class JwtAuthenticationFilter(
         // When the request contains a username, make sure that the
         // authenticated user is accessing only their own resource.
         if ((requestedUsername != null) && (tokenUsername != requestedUsername)) {
-            response.sendError(
-                HttpServletResponse.SC_FORBIDDEN,
-                "Token does not belong to the requested user"
-            )
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "Token does not belong to the requested user")
             return
         }
 
@@ -119,18 +89,13 @@ class JwtAuthenticationFilter(
 
     // ---------------------------------------------------------------------
     // Extracts the username from a route under /api/users/.
-    //
     // Examples:
-    //
     // /api/users/john
     // -> john
-    //
     // /api/users/john/water
     // -> john
-    //
     // /api/users/john/calories
     // -> john
-    //
     // /api/users
     // -> null
     // ---------------------------------------------------------------------
@@ -142,26 +107,20 @@ class JwtAuthenticationFilter(
         val prefix = "/api/users/"
 
         // Return null when the path does not contain a username section.
-        if (!path.startsWith(prefix)) {
-            return null
-        }
+        if (!path.startsWith(prefix)) { return null }
 
         // Remove the /api/users/ prefix.
         val remainingPath = path.substring(prefix.length)
 
         // Return null when nothing remains.
-        if (remainingPath.isBlank()) {
-            return null
-        }
+        if (remainingPath.isBlank()) { return null }
 
         // Find the next slash after the username.
         val slashIndex = remainingPath.indexOf('/')
 
         // When there is no second slash, the entire remaining value
         // represents the username.
-        if (slashIndex == -1) {
-            return remainingPath
-        }
+        if (slashIndex == -1) { return remainingPath }
 
         // Return only the first path segment, which is the username.
         return remainingPath.substring(0, slashIndex)

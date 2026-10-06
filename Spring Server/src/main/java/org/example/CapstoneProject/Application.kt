@@ -1,15 +1,12 @@
 @file:Suppress("PackageName")
-
 // Define the package of the Spring Boot application.
 package org.example.CapstoneProject
-
 import org.springframework.boot.SpringApplication
 import org.springframework.boot.autoconfigure.SpringBootApplication
 
 // -------------------------------------------------------------------------
 // Marks this class as a Spring Boot application and enables
 // Spring Boot auto-configuration.
-//
 // This annotation is equivalent to using:
 // @SpringBootConfiguration
 // @EnableAutoConfiguration
@@ -17,7 +14,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 // -------------------------------------------------------------------------
 @SpringBootApplication
 class Application
-
 // -------------------------------------------------------------------------
 // Main function - the starting point of the Spring Boot application.
 // -------------------------------------------------------------------------

@@ -9,32 +9,17 @@ package org.example.CapstoneProject.model
 // -------------------------------------------------------------------------
 @Suppress("unused")
 class User {
-    // Username field.
-    var userName: String? = null
-
-    // Password field.
-    var password: String? = null
-
-    // Age field.
-    var age: Int = 0
-
-    // Full name field.
-    var fullName: String? = null
-
-    // BMI field that can be updated separately.
-    var bmi: Double = 0.0
+    var userName: String? = null // Username field.
+    var password: String? = null // Password field.
+    var age: Int = 0 // Age field.
+    var fullName: String? = null // Full name field.
+    var bmi: Double = 0.0 // BMI field that can be updated separately.
 
     // Water log field containing per-day water data.
-    //
-    // Key = date in yyyy-MM-dd format.
-    // Value = list of 13 numbers containing the total and cup values.
+    // Key = date in yyyy-MM-dd format, Value = list of 13 numbers containing the total and cup values.
     var waterLog: Map<String, List<Long>>? = null
-
-    // Total daily calories value.
-    var calories: Int = 0
-
-    // Daily hydration goal in milliliters.
-    var goalMl: Int = 3000
+    var calories: Int = 0 // Total daily calories value.
+    var goalMl: Int = 3000 // Daily hydration goal in milliliters.
 
     // ---------------------------------------------------------------------
     // Mandatory no-argument constructor.
@@ -69,13 +54,8 @@ class User {
     // ---------------------------------------------------------------------
     override fun toString(): String {
         return "User{" +
-                "userName='$userName'" +
-                ", password='*********'" +
-                ", age=$age" +
-                ", fullName='$fullName'" +
-                ", bmi=$bmi" +
-                ", calories=$calories" +
-                ", goalMl=$goalMl" +
+                "userName='$userName'" + ", password='*********'" + ", age=$age" +
+                ", fullName='$fullName'" + ", bmi=$bmi" + ", calories=$calories" + ", goalMl=$goalMl" +
                 ", waterLog=${waterLog?.toString() ?: "null"}" +
                 '}'
     }

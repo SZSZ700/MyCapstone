@@ -18,7 +18,6 @@ class StatisticsService(
 
     // ---------------------------------------------------------------------
     // Returns the global BMI distribution for all users.
-    //
     // The result contains the number of users in each BMI category.
     // ---------------------------------------------------------------------
     fun getBmiDistribution(): CompletableFuture<Map<String, Int>> {

@@ -9,7 +9,6 @@ import org.springframework.context.annotation.Configuration
 
 // -------------------------------------------------------------------------
 // Configures the MongoDB Java Driver.
-//
 // MongoDB connection values are loaded from the .env file
 // through EnvConfig.
 // -------------------------------------------------------------------------
@@ -19,9 +18,7 @@ class MongoConfiguration {
     // Creates one shared MongoClient for the whole application.
     // ---------------------------------------------------------------------
     @Bean
-    fun mongoClient(): MongoClient {
-        return MongoClients.create(EnvConfig.getMongoUri())
-    }
+    fun mongoClient(): MongoClient { return MongoClients.create(EnvConfig.getMongoUri()) }
 
     // ---------------------------------------------------------------------
     // Creates the MongoDatabase instance used by the repositories.

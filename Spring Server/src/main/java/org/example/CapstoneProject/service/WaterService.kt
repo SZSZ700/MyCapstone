@@ -7,10 +7,8 @@ import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
 // Contains business logic related to water operations.
-//
 // This service depends only on the WaterRepository interface and does not
 // depend on a specific database or repository implementation.
-//
 // Database-specific behavior such as transactions and concurrency handling
 // remains inside the repository implementation.
 // -------------------------------------------------------------------------
@@ -22,10 +20,8 @@ class WaterService(
 
     // ---------------------------------------------------------------------
     // Adds one water drink for the user.
-    //
     // Transaction and concurrency handling are performed
     // by the repository implementation.
-    //
     // Returns true when the update succeeded.
     // Returns false when the user was not found or the value is invalid.
     // ---------------------------------------------------------------------
@@ -36,7 +32,6 @@ class WaterService(
 
     // ---------------------------------------------------------------------
     // Returns today's and yesterday's water totals for a user.
-    //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     fun getWater(username: String): CompletableFuture<JSONObject?> {
@@ -46,7 +41,6 @@ class WaterService(
 
     // ---------------------------------------------------------------------
     // Returns the user's water history for the requested number of days.
-    //
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     fun getWaterHistoryMap(username: String, days: Int): CompletableFuture<Map<String, Long>?> {
@@ -72,10 +66,8 @@ class WaterService(
 
     // ---------------------------------------------------------------------
     // Updates today's water goal.
-    //
     // Transaction and concurrency handling are performed
     // by the repository implementation.
-    //
     // Returns true when the update succeeded.
     // Returns false when the value is invalid or the user was not found.
     // ---------------------------------------------------------------------

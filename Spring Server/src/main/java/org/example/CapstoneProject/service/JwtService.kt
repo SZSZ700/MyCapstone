@@ -14,9 +14,7 @@ import java.util.Date
 
 // -------------------------------------------------------------------------
 // Handles JWT creation, validation and username extraction.
-//
 // Tokens are signed using the HS256 algorithm.
-//
 // Each JWT contains:
 // - subject: username of the authenticated user
 // - issuedAt: time when the token was created
@@ -28,9 +26,7 @@ class JwtService {
     private val jwtSecret: String
 
     companion object {
-
         // Token lifetime in milliseconds.
-        //
         // 24 hours:
         // 24 * 60 * 60 * 1000 = 86,400,000 milliseconds.
         private const val TOKEN_EXPIRATION_MS = 86_400_000L
@@ -45,9 +41,7 @@ class JwtService {
             // Throw an exception if the secret is too short.
             if (secret.length < 32) {
                 // Stop application startup because the JWT secret is invalid.
-                throw IllegalStateException(
-                    "JWT_SECRET must exist and contain at least 32 characters"
-                )
+                throw IllegalStateException("JWT_SECRET must exist and contain at least 32 characters")
             }
 
             // Return the validated production secret.
@@ -57,7 +51,6 @@ class JwtService {
 
     // ---------------------------------------------------------------------
     // Creates the production JwtService.
-    //
     // The real JWT secret is loaded from the local environment.
     // ---------------------------------------------------------------------
     constructor() {
@@ -67,20 +60,15 @@ class JwtService {
 
     // ---------------------------------------------------------------------
     // Creates JwtService with an explicitly provided secret.
-    //
     // This constructor allows automated tests to use a dedicated fake
     // secret without exposing or depending on the real production secret.
-    //
     // jwtSecret: secret used to sign and verify JWT tokens
     // ---------------------------------------------------------------------
     constructor(jwtSecret: String?) {
         // Reject missing or insufficiently long secrets.
         if (jwtSecret == null || jwtSecret.length < 32) {
-
             // Stop construction when the supplied secret is invalid.
-            throw IllegalArgumentException(
-                "JWT secret must exist and contain at least 32 characters"
-            )
+            throw IllegalArgumentException("JWT secret must exist and contain at least 32 characters")
         }
 
         // Store the provided secret for this JwtService instance.
@@ -96,21 +84,13 @@ class JwtService {
             val now = Date()
 
             // Calculate when the token should expire.
-            val expiration =
-                Date(now.time + TOKEN_EXPIRATION_MS)
+            val expiration = Date(now.time + TOKEN_EXPIRATION_MS)
 
             // Build the JWT claims.
-            val claims = JWTClaimsSet.Builder()
-                .subject(username)
-                .issueTime(now)
-                .expirationTime(expiration)
-                .build()
+            val claims = JWTClaimsSet.Builder().subject(username).issueTime(now).expirationTime(expiration).build()
 
             // Create the JWT using the required HS256 algorithm.
-            val signedJWT = SignedJWT(
-                JWSHeader(JWSAlgorithm.HS256),
-                claims
-            )
+            val signedJWT = SignedJWT(JWSHeader(JWSAlgorithm.HS256), claims)
 
             // Create the signer using this JwtService instance secret.
             val signer = MACSigner(jwtSecret)
@@ -122,18 +102,13 @@ class JwtService {
             return signedJWT.serialize()
 
         } catch (e: JOSEException) {
-
             // Convert JWT signing errors into an unchecked exception.
-            throw IllegalStateException(
-                "Failed to generate JWT",
-                e
-            )
+            throw IllegalStateException("Failed to generate JWT", e)
         }
     }
 
     // ---------------------------------------------------------------------
     // Validates the JWT algorithm, signature and expiration time.
-    //
     // Returns true only when:
     // - the token can be parsed
     // - the token uses HS256
@@ -149,9 +124,7 @@ class JwtService {
             // Read the signing algorithm from the JWT header.
             val algorithm = signedJWT.header.algorithm
             // Reject tokens that use a signing algorithm other than HS256.
-            if (algorithm != JWSAlgorithm.HS256) {
-                return false
-            }
+            if (algorithm != JWSAlgorithm.HS256) { return false }
 
             // Create a verifier using this JwtService instance secret.
             val verifier = MACVerifier(jwtSecret)
@@ -159,9 +132,7 @@ class JwtService {
             val validSignature = signedJWT.verify(verifier)
 
             // Reject the token if its signature is invalid.
-            if (!validSignature) {
-                return false
-            }
+            if (!validSignature) { return false }
 
             // Read the expiration time from the token.
             val expiration = signedJWT.jwtClaimsSet.expirationTime ?: return false
@@ -184,7 +155,6 @@ class JwtService {
 
     // ---------------------------------------------------------------------
     // Extracts the username stored in the JWT subject claim.
-    //
     // Returns null when the token cannot be parsed.
     // ---------------------------------------------------------------------
     fun extractUsername(token: String): String? {

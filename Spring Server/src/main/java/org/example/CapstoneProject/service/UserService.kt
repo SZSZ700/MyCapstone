@@ -20,7 +20,6 @@ import java.util.concurrent.CompletableFuture
 class UserService(
     // Repository used to access user data.
     private val userRepository: UserRepository,
-
     // Password encoder used to prevent plaintext passwords from
     // being sent to the repository layer.
     private val passwordEncoder: PasswordEncoder
@@ -79,27 +78,15 @@ class UserService(
     // without modification.
     // ---------------------------------------------------------------------
     fun patchUser(username: String, updates: MutableMap<String, Any>): CompletableFuture<User?> {
-        if (updates.containsKey("password") && updates["password"] !is String) {
-            throw IllegalArgumentException("Password must be a string")
-        }
-
-        if (updates.containsKey("fullName") && updates["fullName"] !is String) {
-            throw IllegalArgumentException("Full name must be a string")
-        }
-
-        if (updates.containsKey("age") && updates["age"] !is Number) {
-            throw IllegalArgumentException("Age must be a number")
-        }
-
-        if (updates.containsKey("bmi") && updates["bmi"] !is Number) {
-            throw IllegalArgumentException("BMI must be a number")
-        }
+        if (updates.containsKey("password") && updates["password"] !is String) { throw IllegalArgumentException("Password must be a string") }
+        if (updates.containsKey("fullName") && updates["fullName"] !is String) { throw IllegalArgumentException("Full name must be a string") }
+        if (updates.containsKey("age") && updates["age"] !is Number) { throw IllegalArgumentException("Age must be a number") }
+        if (updates.containsKey("bmi") && updates["bmi"] !is Number) { throw IllegalArgumentException("BMI must be a number") }
 
         // Check whether the PATCH request contains a password.
         if (updates.containsKey("password")) {
             // Read the password as a String.
             val password = updates["password"] as String
-
             // Replace the raw password with its BCrypt hash.
             updates["password"] = passwordEncoder.encode(password)
         }
@@ -110,29 +97,22 @@ class UserService(
 
     // ---------------------------------------------------------------------
     // Creates a new user.
-    //
     // The raw password is encoded with BCrypt before the user is sent
     // to the repository.
-    //
     // This guarantees that this creation path does not store
     // plaintext passwords.
-    //
     // Returns true when the user was created successfully.
     // Returns false when the username is invalid or already exists.
     // ---------------------------------------------------------------------
     fun createUser(user: User?): CompletableFuture<Boolean> {
         // Reject a missing user before trying to access its password.
-        if (user == null) {
-            return CompletableFuture.completedFuture(false)
-        }
+        if (user == null) { return CompletableFuture.completedFuture(false) }
 
         // Read the raw password.
         val password = user.password
 
         // Reject a missing password.
-        if (password == null) {
-            return CompletableFuture.completedFuture(false)
-        }
+        if (password == null) { return CompletableFuture.completedFuture(false) }
 
         // Encode the raw password before sending the user
         // to the repository layer.
