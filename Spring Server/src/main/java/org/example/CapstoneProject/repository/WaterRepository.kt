@@ -1,49 +1,86 @@
 @file:Suppress("PackageName", "unused")
+
 package org.example.CapstoneProject.repository
-import org.json.JSONObject
+
+import java.time.LocalDate
+import java.util.Date
 import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
-// Defines the operations that can be performed on water-related data.
+// Represents one water record returned by the repository.
+//
+// This is a database-independent representation used by the service layer.
+// MongoDB-specific types such as Document and ObjectId do not leave
+// the repository implementation.
+// -------------------------------------------------------------------------
+data class WaterRecordData(
+    val recordedAt: Date,
+    val amountMl: Int
+)
+
+// -------------------------------------------------------------------------
+// Defines the persistence operations that can be performed
+// on water-related data.
+//
 // This interface is independent of the database implementation.
 // The MongoDB implementation is provided separately.
+//
+// Business rules such as:
+// - water amount validation
+// - current-date selection
+// - daily totals
+// - missing-day values
+// - weekly averages
+// - default goal values
+// - goal validation
+//
+// are handled by the service layer.
 // -------------------------------------------------------------------------
 interface WaterRepository {
+
     // ---------------------------------------------------------------------
-    // Adds a water amount to the user's water log for today.
+    // Stores one water drink for a user at the supplied timestamp.
+    //
+    // The service layer validates the amount and decides the timestamp.
+    //
+    // Returns true when the record was stored successfully.
+    // Returns false when no matching user exists.
+    // ---------------------------------------------------------------------
+    fun updateWater(username: String, waterAmount: Int, recordedAt: Date): CompletableFuture<Boolean>
+
+    // ---------------------------------------------------------------------
+    // Returns the user's stored water records inside the supplied
+    // time range.
+    //
+    // startInclusive <= recordedAt < endExclusive
+    //
+    // The repository returns only stored records.
+    // Daily totals, missing-day values and statistical calculations
+    // are handled by the service layer.
+    //
+    // Returns null when no matching user exists.
+    // ---------------------------------------------------------------------
+    fun getWaterRecords(username: String, startInclusive: Date, endExclusive: Date): CompletableFuture<List<WaterRecordData>?>
+
+    // ---------------------------------------------------------------------
+    // Returns the user's most recently stored daily water goal.
+    //
+    // Returns null when:
+    // - no matching user exists
+    // - no goal has been stored
+    //
+    // The application default is handled by the service layer.
+    // ---------------------------------------------------------------------
+    fun getGoalMl(username: String): CompletableFuture<Int?>
+
+    // ---------------------------------------------------------------------
+    // Stores the user's water goal for the supplied date.
+    //
+    // The service layer validates the goal and decides which date
+    // the operation belongs to.
     //
     // Returns true when the update succeeded.
-    // Returns false when the user was not found or the update failed.
+    // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    fun updateWater(username: String, waterAmount: Int): CompletableFuture<Boolean>
-
-    // ---------------------------------------------------------------------
-    // Returns today's and yesterday's water totals for a user.
-    // Returns null when no matching user exists.
-    // ---------------------------------------------------------------------
-    fun getWater(username: String): CompletableFuture<JSONObject?>
-
-    // ---------------------------------------------------------------------
-    // Returns the user's water history for the requested number of days.
-    // Returns null when no matching user exists.
-    // ---------------------------------------------------------------------
-    fun getWaterHistoryMap(username: String, days: Int): CompletableFuture<Map<String, Long>?>
-
-    // ---------------------------------------------------------------------
-    // Returns the user's weekly water averages for the last four weeks.
-    // ---------------------------------------------------------------------
-    fun getWeeklyAverages(username: String): CompletableFuture<Map<String, Int>>
-
-    // ---------------------------------------------------------------------
-    // Returns the user's daily water goal.
-    // Returns the default goal when no value or user is found.
-    // ---------------------------------------------------------------------
-    fun getGoalMl(username: String): CompletableFuture<Int>
-
-    // ---------------------------------------------------------------------
-    // Updates the user's daily water goal.
-    // Returns true when the update succeeded.
-    // Returns false when the value is invalid or the user was not found.
-    // ---------------------------------------------------------------------
-    fun updateGoalMl(username: String, goalMl: Int): CompletableFuture<Boolean>
+    fun updateGoalMl(username: String, recordDate: LocalDate, goalMl: Int): CompletableFuture<Boolean>
 }
