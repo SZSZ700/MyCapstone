@@ -185,67 +185,68 @@ class MongoUserRepository(database: MongoDatabase,
 
     // ---------------------------------------------------------------------
     // Partially updates an existing user.
-    // PATCH is dynamic, so the update fields depend on what the client sent.
-    // Username changes are intentionally ignored.
-    // Example Mongo raw:
-    // db.users.updateOne({username: username}, { $set: {fullName: "New Name", age: 30}})
     //
-    // Returns the updated user.
+    // Field validation, type validation and password encoding are handled
+    // by the service layer before this method is called.
+    //
+    // This repository is responsible only for translating the prepared
+    // fields into MongoDB update operations and executing the update.
+    //
+    // The API field "password" is stored in MongoDB as "passwordHash".
+    //
+    // Returns the updated user when the user was found.
     // Returns null when no matching user exists.
     // ---------------------------------------------------------------------
     override fun patchByUsername(username: String, updates: MutableMap<String, Any>): CompletableFuture<User?> {
+
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync<User?> {
-            // Build only the update operations that were actually requested.
+            // Build MongoDB update operations from the prepared fields.
             val mongoUpdates = ArrayList<Bson>()
 
-            // Convert the API field "password"
-            // into the MongoDB field "passwordHash".
-            if (updates.containsKey("password")) { mongoUpdates.add(set("passwordHash", updates["password"])) }
+            // Map the service field "password" to the MongoDB field "passwordHash".
+            if (updates.containsKey("password")) {
+                mongoUpdates.add(set("passwordHash", updates["password"]))
+            }
 
-            // Add fullName when supplied.
-            if (updates.containsKey("fullName")) { mongoUpdates.add(set("fullName", updates["fullName"])) }
+            // Add the full name when supplied.
+            if (updates.containsKey("fullName")) {
+                mongoUpdates.add(set("fullName", updates["fullName"]))
+            }
 
-            // Add age when supplied.
+            // Add the already validated and normalized age.
             if (updates.containsKey("age")) {
-                val age = updates["age"] as Number
-                mongoUpdates.add(set("age", age.toInt()))
+                mongoUpdates.add(set("age", updates["age"]))
             }
 
-            // Add BMI when supplied.
+            // Add the already validated and normalized BMI.
             if (updates.containsKey("bmi")) {
-                val bmi = updates["bmi"] as Number
-                mongoUpdates.add(set("bmi", bmi.toDouble()))
+                mongoUpdates.add(set("bmi", updates["bmi"]))
             }
-
-            // Username is never added to mongoUpdates,
-            // therefore PATCH cannot change it.
 
             // When no supported fields were supplied,
-            // simply return the current user.
+            // return the current user without performing an update.
             if (mongoUpdates.isEmpty()) {
-                // Mongo raw:
-                // db.users.findOne({
-                //     username: username
-                // })
                 val currentDocument = users.find(eq("username", username)).first()
 
                 if (currentDocument == null) { null }
                 else { mapUser(currentDocument) }
             } else {
-                // Mongo raw:
-                // db.users.updateOne(
-                //     { username: username },
-                //     { $set: { dynamic fields here } }
-                // )
+                // Apply all requested fields in a single MongoDB update.
+                val result = users.updateOne(eq("username", username),
+                    combine(mongoUpdates)
+                )
 
-                val result = users.updateOne(eq("username", username), combine(mongoUpdates))
-
-                // No matching user exists.
+                // Return null when the user does not exist.
                 if (result.matchedCount == 0L) { null }
                 else {
-                    // Read the updated document again.
-                    val updatedDocument = users.find(eq("username", username)).first()
+
+                    // Read and return the updated user.
+                    val updatedDocument =
+                        users.find(
+                            eq("username", username)
+                        ).first()
+
                     if (updatedDocument == null) { null }
                     else { mapUser(updatedDocument) }
                 }
@@ -256,6 +257,7 @@ class MongoUserRepository(database: MongoDatabase,
     // ---------------------------------------------------------------------
     // Creates a new user.
     // Mongo raw:
+    //
     // db.users.insertOne({
     //     username: userName,
     //     passwordHash: password,
@@ -264,35 +266,28 @@ class MongoUserRepository(database: MongoDatabase,
     //     bmi: bmi,
     //     transactionVersion: 0
     // })
-    // Returns false when:
-    // - username is null
-    // - username is blank
-    // - username already exists
-    // A UNIQUE index on username still protects against concurrent
-    // duplicate signup requests.
+    //
+    // Input validation is handled by the service layer.
+    //
+    // A UNIQUE index on username protects against duplicate usernames,
+    // including concurrent signup requests.
+    //
+    // Returns true when the user was created successfully.
+    // Returns false when MongoDB rejects the insert because the username
+    // already exists.
     // ---------------------------------------------------------------------
     override fun create(user: User): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync {
-            // Extract the username safely.
-            val username = user.userName
-
-            // Reject invalid usernames before contacting MongoDB.
-            if (username.isNullOrBlank()) {
-                false
-            } else {
-                try {
-                    // Insert the new user document.
-                    users.insertOne(userToDocument(user))
-                    true
-                }
-                catch (e: MongoWriteException) {
-                    // Duplicate key error caused by the UNIQUE username index.
-                    // This protects against concurrent duplicate signup requests.
-                    if (e.error.code == 11000) { false }
-                    // Re-throw every other MongoDB write error.
-                    else { throw e }
-                }
+            try {
+                // Insert the new user document.
+                users.insertOne(userToDocument(user))
+                true
+            } catch (e: MongoWriteException) {
+                // MongoDB duplicate-key error caused by the UNIQUE username index.
+                if (e.error.code == 11000) { false }
+                // Re-throw every other MongoDB write error.
+                else { throw e }
             }
         }
     }
@@ -315,93 +310,94 @@ class MongoUserRepository(database: MongoDatabase,
     }
 
     // ---------------------------------------------------------------------
-    // Returns today's calories value.
+    // Returns the calories value for a user on the supplied date.
+    //
     // Mongo raw:
     // db.calories.findOne({
     //     userId: userId,
-    //     recordDate: today
+    //     recordDate: date
     // })
-    // Returns zero when:
+    //
+    // Returns null when:
     // - the user does not exist
-    // - no calories document exists for today
+    // - no calories document exists for the supplied date
+    // - the calories field is missing
     // ---------------------------------------------------------------------
-    override fun getCalories(username: String): CompletableFuture<Int> {
+    override fun getCalories(username: String, date: LocalDate): CompletableFuture<Int?> {
         // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync {
+        return CompletableFuture.supplyAsync<Int?> {
             // Resolve the username into the user's ObjectId.
             val userId = findUserId(username)
 
-            // Missing user behaves like the original implementation.
-            if (userId == null) { 0 }
+            if (userId == null) { null }
             else {
-                // LocalDate.toString() produces yyyy-MM-dd.
-                val today = LocalDate.now().toString()
-
-                // Find today's calories document.
+                // Convert the date to the yyyy-MM-dd format stored in MongoDB.
+                val recordDate = date.toString()
+                // Find the calories document for the supplied date.
                 val document = calories.find(
-                    and(eq("userId", userId), eq("recordDate", today))).first()
+                    and(
+                        eq("userId", userId),
+                        eq("recordDate", recordDate)
+                    )
+                ).first()
 
-                // No calories entry exists for today.
-                if (document == null) { 0 }
+                if (document == null) { null }
                 else {
-                    // Return the stored calories value.
-                    document.getInteger("calories", 0)
+                    // Return the stored value without applying an application fallback.
+                    document.get("calories", Number::class.java)?.toInt()
                 }
             }
         }
     }
 
     // ---------------------------------------------------------------------
-    // Updates today's calories value using a MongoDB transaction.
+    // Updates the calories value for a user on the supplied date
+    // using a MongoDB transaction.
+    //
     // The transaction contains:
     // 1. Find and lock the user.
-    // 2. Update today's calories document.
-    // 3. Insert today's document automatically when it does not exist.
+    // 2. Update the calories document for the supplied date.
+    // 3. Insert the document automatically when it does not exist.
+    //
     // upsert(true) means:
-    // - If today's document exists -> update it.
-    // - If today's document does not exist -> insert it.
-    // withTransaction() manages transaction start, commit, abort
-    // and eligible transient transaction retries.
-    // Mongo raw:
-    // session.withTransaction(() -> {
-    //     db.users.findOneAndUpdate({username: username}, {$inc: {transactionVersion: 1}})
-    //     db.calories.updateOne({userId: userId, recordDate: today}, {$set: {calories: caloriesValue}}, {upsert: true})
-    // })
-    // Returns false for invalid values or missing users.
+    // - If the document exists -> update it.
+    // - If the document does not exist -> insert it.
+    //
+    // Calories validation and date selection are handled by the service layer.
+    //
+    // Returns true when the update succeeded.
+    // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    override fun updateCalories(username: String, calories: Int): CompletableFuture<Boolean> {
+    override fun updateCalories(username: String, date: LocalDate, calories: Int): CompletableFuture<Boolean> {
         // Run the synchronous MongoDB operations asynchronously.
         return CompletableFuture.supplyAsync {
-            // Preserve the existing calorie validation.
-            if (calories !in 0..20000) { false }
-            else {
-                // Open a MongoDB client session.
-                val session = mongoClient.startSession()
+            // Open a MongoDB client session.
+            val session = mongoClient.startSession()
+            session.use { session ->
+                // Execute the complete operation inside one transaction.
+                session.withTransaction {
+                    // Find and lock the user inside the current transaction.
+                    val userId = lockAndFindUserId(session, username)
 
-                session.use { session ->
-                    // Execute the complete operation inside one transaction.
-                    session.withTransaction {
-                        // Find and lock the user inside the current transaction.
-                        val userId = lockAndFindUserId(session, username)
+                    if (userId == null) { false }
+                    else {
+                        // Convert the date to the yyyy-MM-dd format stored in MongoDB.
+                        val recordDate = date.toString()
 
-                        // The user does not exist.
-                        if (userId == null) { false }
-                        else {
-                            // Build today's yyyy-MM-dd key.
-                            val today = LocalDate.now().toString()
+                        // Update the calories document.
+                        // MongoDB inserts the document when it does not exist.
+                        this@MongoUserRepository.calories.updateOne(
+                            session,
+                            and(eq("userId", userId),
+                                eq("recordDate", recordDate)
+                            ),
+                            set("calories", calories),
+                            UpdateOptions().upsert(true)
+                        )
 
-                            // Update today's calories document.
-                            // If it does not exist, MongoDB creates it automatically.
-                            this@MongoUserRepository.calories.updateOne(
-                                session,
-                                and(eq("userId", userId), eq("recordDate", today)),
-                                set("calories", calories), UpdateOptions().upsert(true)
-                            )
-
-                            // Returning true allows withTransaction()
-                            // to commit the transaction.
-                            true
-                        }
+                        // Returning true allows withTransaction()
+                        // to commit the transaction.
+                        true
                     }
                 }
             }
@@ -409,49 +405,27 @@ class MongoUserRepository(database: MongoDatabase,
     }
 
     // ---------------------------------------------------------------------
-    // Returns the global BMI distribution.
+    // Returns all BMI values stored in the users collection.
+    //
     // Mongo raw:
-    // db.users.find({})
-    // MongoDB only retrieves the stored BMI values.
-    // The BMI category business logic remains in Kotlin:
-    // - Underweight
-    // - Normal
-    // - Overweight
-    // - Obese
+    // db.users.find({}, {bmi: 1})
+    //
+    // BMI classification is handled by the service layer.
     // ---------------------------------------------------------------------
-    override fun getBmiDistribution(): CompletableFuture<Map<String, Int>> {
+    override fun findAllBmiValues(): CompletableFuture<List<Double>> {
         // Run the synchronous MongoDB operation asynchronously.
         return CompletableFuture.supplyAsync {
-            // Initialize all counters.
-            var underweight = 0
-            var normal = 0
-            var overweight = 0
-            var obese = 0
+            val bmiValues = ArrayList<Double>()
 
-            // Read all users.
+            // Read the BMI value from every user document.
             for (document in users.find()) {
-                // Read the BMI as Number because BSON numeric values
-                // may be represented by different JVM numeric types.
-                val bmiNumber = document.get("bmi", Number::class.java) ?: continue
-                // Convert to Double for comparison.
-                val bmi = bmiNumber.toDouble()
+                val bmiNumber =
+                    document.get("bmi", Number::class.java) ?: continue
 
-                // Apply the same BMI classification used before.
-                if (bmi < 18.5) { underweight++ }
-                else if (bmi in 18.5..<25.0) { normal++ }
-                else if (bmi in 25.0..<30.0) { overweight++ }
-                else if (bmi >= 30.0) { obese++ }
+                bmiValues.add(bmiNumber.toDouble())
             }
 
-            // LinkedHashMap preserves the desired output order.
-            val distribution = LinkedHashMap<String, Int>()
-            distribution["Underweight"] = underweight
-            distribution["Normal"] = normal
-            distribution["Overweight"] = overweight
-            distribution["Obese"] = obese
-
-            // return the distribution map
-            distribution
+            bmiValues
         }
     }
 

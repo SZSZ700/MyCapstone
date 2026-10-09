@@ -1,6 +1,7 @@
 @file:Suppress("PackageName")
 package org.example.CapstoneProject.repository
 import org.example.CapstoneProject.model.User
+import java.time.LocalDate
 import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
@@ -46,7 +47,9 @@ interface UserRepository {
     // ---------------------------------------------------------------------
     // Creates a new user.
     // Returns true when the user was created successfully.
-    // Returns false when the username is invalid or already exists.
+    // Returns false when MongoDB rejects the creation because the username
+    // already exists.
+    // Input validation belongs to the service layer.
     // ---------------------------------------------------------------------
     fun create(user: User): CompletableFuture<Boolean>
 
@@ -58,21 +61,21 @@ interface UserRepository {
     fun updateBmi(username: String, bmi: Double): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
-    // Returns the calories value of a user.
-    // Returns zero when no value or matching user exists.
+    // Returns the calories value for a user on the supplied date.
+    // Returns null when the user or calorie record does not exist.
     // ---------------------------------------------------------------------
-    fun getCalories(username: String): CompletableFuture<Int>
+    fun getCalories(username: String, date: LocalDate): CompletableFuture<Int?>
 
     // ---------------------------------------------------------------------
-    // Updates the calories value of a user.
+    // Updates the calories value for a user on the supplied date.
     // Returns true when the update succeeded.
-    // Returns false when the value is invalid or no matching user exists.
+    // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
-    fun updateCalories(username: String, calories: Int): CompletableFuture<Boolean>
+    fun updateCalories(username: String, date: LocalDate, calories: Int): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
-    // Returns the global BMI distribution for all users.
-    // The result contains the number of users in each BMI category.
+    // Returns all stored BMI values.
+    // The repository does not classify the values into BMI categories.
     // ---------------------------------------------------------------------
-    fun getBmiDistribution(): CompletableFuture<Map<String, Int>>
+    fun findAllBmiValues(): CompletableFuture<List<Double>>
 }

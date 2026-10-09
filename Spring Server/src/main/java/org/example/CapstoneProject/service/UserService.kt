@@ -70,55 +70,107 @@ class UserService(
 
     // ---------------------------------------------------------------------
     // Partially updates an existing user.
+    // The service validates and prepares all supported fields before
+    // sending them to the repository.
+    //
+    // Supported fields:
+    // - password
+    // - fullName
+    // - age
+    // - bmi
+    //
+    // Unsupported fields are ignored.
     //
     // If the update contains a password, the raw password is encoded
-    // with BCrypt before the data is sent to the repository.
-    //
-    // Other supported fields are passed to the repository
-    // without modification.
+    // with BCrypt before persistence.
     // ---------------------------------------------------------------------
     fun patchUser(username: String, updates: MutableMap<String, Any>): CompletableFuture<User?> {
-        if (updates.containsKey("password") && updates["password"] !is String) { throw IllegalArgumentException("Password must be a string") }
-        if (updates.containsKey("fullName") && updates["fullName"] !is String) { throw IllegalArgumentException("Full name must be a string") }
-        if (updates.containsKey("age") && updates["age"] !is Number) { throw IllegalArgumentException("Age must be a number") }
-        if (updates.containsKey("bmi") && updates["bmi"] !is Number) { throw IllegalArgumentException("BMI must be a number") }
+        // Create a clean map containing only supported and validated fields.
+        val repositoryUpdates = mutableMapOf<String, Any>()
 
-        // Check whether the PATCH request contains a password.
+        // Validate and encode the password when supplied.
         if (updates.containsKey("password")) {
-            // Read the password as a String.
-            val password = updates["password"] as String
-            // Replace the raw password with its BCrypt hash.
-            updates["password"] = passwordEncoder.encode(password)
+            val password = updates["password"]
+
+            if (password !is String) {
+                throw IllegalArgumentException("Password must be a string")
+            }
+
+            repositoryUpdates["password"] = passwordEncoder.encode(password)
         }
 
-        // Send the requested fields to the repository.
-        return userRepository.patchByUsername(username, updates)
+        // Validate the full name when supplied.
+        if (updates.containsKey("fullName")) {
+            val fullName = updates["fullName"]
+
+            if (fullName !is String) {
+                throw IllegalArgumentException("Full name must be a string")
+            }
+
+            repositoryUpdates["fullName"] = fullName
+        }
+
+        // Validate and normalize the age when supplied.
+        if (updates.containsKey("age")) {
+            val age = updates["age"]
+
+            if (age !is Number) {
+                throw IllegalArgumentException("Age must be a number")
+            }
+
+            repositoryUpdates["age"] = age.toInt()
+        }
+
+        // Validate and normalize the BMI when supplied.
+        if (updates.containsKey("bmi")) {
+            val bmi = updates["bmi"]
+
+            if (bmi !is Number) {
+                throw IllegalArgumentException("BMI must be a number")
+            }
+
+            repositoryUpdates["bmi"] = bmi.toDouble()
+        }
+
+        // Delegate the prepared update to the repository.
+        return userRepository.patchByUsername(username, repositoryUpdates)
     }
 
     // ---------------------------------------------------------------------
     // Creates a new user.
+    // Validates the user data before persistence.
     // The raw password is encoded with BCrypt before the user is sent
     // to the repository.
     // This guarantees that this creation path does not store
     // plaintext passwords.
     // Returns true when the user was created successfully.
-    // Returns false when the username is invalid or already exists.
+    // Returns false when the user data is invalid or the username already exists.
     // ---------------------------------------------------------------------
     fun createUser(user: User?): CompletableFuture<Boolean> {
-        // Reject a missing user before trying to access its password.
-        if (user == null) { return CompletableFuture.completedFuture(false) }
+        // Reject a missing user.
+        if (user == null) {
+            return CompletableFuture.completedFuture(false)
+        }
+
+        // Validate the username before calling the repository.
+        val username = user.userName
+        if (username.isNullOrBlank()) {
+            return CompletableFuture.completedFuture(false)
+        }
 
         // Read the raw password.
         val password = user.password
 
         // Reject a missing password.
-        if (password == null) { return CompletableFuture.completedFuture(false) }
+        if (password == null) {
+            return CompletableFuture.completedFuture(false)
+        }
 
         // Encode the raw password before sending the user
         // to the repository layer.
         user.password = passwordEncoder.encode(password)
 
-        // Delegate the creation operation to the repository.
+        // Delegate persistence to the repository.
         return userRepository.create(user)
     }
 }

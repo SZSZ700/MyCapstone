@@ -2,6 +2,7 @@
 package org.example.CapstoneProject.service
 import org.example.CapstoneProject.repository.UserRepository
 import org.springframework.stereotype.Service
+import java.time.LocalDate
 import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
@@ -25,18 +26,33 @@ class UserHealthService(
     }
 
     // ---------------------------------------------------------------------
-    // Returns the calories value of a user.
+    // Returns today's calories value for a user.
+    // Returns zero when no value or matching user exists.
     // ---------------------------------------------------------------------
     fun getCalories(username: String): CompletableFuture<Int> {
-        // Delegate the database operation to the repository.
-        return userRepository.getCalories(username)
+        // Determine the date for the application operation.
+        val today = LocalDate.now()
+        // Convert a missing stored value into the application's default value.
+        return userRepository.getCalories(username, today)
+            .thenApply { calories -> calories ?: 0 }
     }
 
     // ---------------------------------------------------------------------
-    // Updates the calories value of a user.
+    // Updates today's calories value of a user.
+    // Validates the calorie value before persistence.
+    // Returns true when the update succeeded.
+    // Returns false when the calorie value is invalid or the user does not exist.
     // ---------------------------------------------------------------------
     fun updateCalories(username: String, calories: Int): CompletableFuture<Boolean> {
-        // Delegate the database operation to the repository.
-        return userRepository.updateCalories(username, calories)
+        // Reject calorie values outside the supported range.
+        if (calories !in 0..20000) {
+            return CompletableFuture.completedFuture(false)
+        }
+
+        // Determine the date for the application operation.
+        val today = LocalDate.now()
+
+        // Delegate persistence to the repository.
+        return userRepository.updateCalories(username, today, calories)
     }
 }
