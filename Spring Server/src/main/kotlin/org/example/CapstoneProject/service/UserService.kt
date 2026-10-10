@@ -96,7 +96,13 @@ class UserService(
                 throw IllegalArgumentException("Password must be a string")
             }
 
-            repositoryUpdates["password"] = passwordEncoder.encode(password)
+            val encodedPassword = passwordEncoder.encode(password)
+
+            if (encodedPassword == null) {
+                throw IllegalStateException("Password encoding failed")
+            }
+
+            repositoryUpdates["password"] = encodedPassword
         }
 
         // Validate the full name when supplied.
