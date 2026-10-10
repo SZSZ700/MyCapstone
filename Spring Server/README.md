@@ -87,10 +87,12 @@ Spring Server/
     │   │       │   └── User.kt
     │   │       │
     │   │       ├── repository/
+    │   │       │   ├── CaloriesRepository.kt
     │   │       │   ├── UserRepository.kt
     │   │       │   ├── WaterRepository.kt
     │   │       │   │
     │   │       │   └── mongo/
+    │   │       │       ├── MongoCaloriesRepository.kt
     │   │       │       ├── MongoUserRepository.kt
     │   │       │       └── MongoWaterRepository.kt
     │   │       │
@@ -169,12 +171,13 @@ Handles authentication-related application logic.
 
 Responsibilities include:
 
-- User signup
+- User signup orchestration
 - Username existence checks during registration
-- BCrypt password encoding during signup
 - Login credential validation
 - Comparing raw login passwords against stored BCrypt hashes
 - Mapping duplicate username creation attempts into application-level signup results
+
+Password encoding for user creation is handled by `UserService` before persistence.
 
 ---
 
@@ -251,14 +254,27 @@ Handles water-related application operations.
 
 Responsibilities include:
 
+- Validating water intake amounts
+- Selecting application dates and timestamps for water operations
 - Adding water intake
-- Retrieving today's and yesterday's water
-- Retrieving water history
-- Retrieving weekly averages
-- Retrieving daily water goals
-- Updating daily water goals
+- Calculating today's and yesterday's water totals from stored records
+- Building water-history results and filling missing requested days with zero
+- Calculating weekly water averages
+- Applying the default daily water goal when no stored goal exists
+- Validating allowed daily water-goal values
+- Selecting the date used when updating a daily water goal
 
-Database transactions and MongoDB-specific concurrency behavior remain inside the repository implementation.
+`WaterRepository` returns persistence data and performs storage operations. Water totals, history shaping, weekly buckets, averages, defaults, and validation are handled by `WaterService`.
+
+Current water and goal business rules include:
+
+```text
+Water intake amount must be greater than 0
+Default daily water goal = 3000 ml
+Allowed daily water-goal range = 500..10000 ml
+```
+
+Database transactions, MongoDB queries, `ObjectId` handling, upserts, and MongoDB-specific concurrency behavior remain inside the repository implementation.
 
 ---
 
@@ -268,9 +284,20 @@ Handles user health-related data.
 
 Responsibilities include:
 
-- Updating BMI
-- Retrieving calories
-- Updating calories
+- Updating BMI through `UserRepository`
+- Retrieving daily calories through `CaloriesRepository`
+- Updating daily calories through `CaloriesRepository`
+- Validating supported calorie values before persistence
+- Selecting the application date used for calorie operations
+- Applying the application fallback value when no stored calorie value exists
+
+The service keeps BMI persistence on `UserRepository` because BMI is stored on the user document, while calorie persistence is isolated behind the dedicated `CaloriesRepository`.
+
+Current calorie validation preserves the supported range:
+
+```text
+0..20000
+```
 
 ---
 
@@ -280,7 +307,11 @@ Handles global statistical operations.
 
 Responsibilities include:
 
-- Retrieving BMI distribution statistics
+- Retrieving stored BMI values through `UserRepository`
+- Classifying BMI values into application-level distribution categories
+- Returning global BMI distribution statistics
+
+The repository retrieves stored BMI values only. BMI category classification remains in the service layer.
 
 Current BMI categories are:
 
@@ -354,9 +385,13 @@ Signup
     ↓
 Raw password received through HTTPS
     ↓
+UserService
+    ↓
 BCrypt encoding
     ↓
-BCrypt hash sent to repository
+UserRepository
+    ↓
+MongoUserRepository
     ↓
 passwordHash stored in MongoDB
 ```
@@ -527,17 +562,27 @@ The repository layer separates persistence operations from the service layer.
 ### Repository Interfaces
 
 ```text
+CaloriesRepository
 UserRepository
 WaterRepository
 ```
 
-These interfaces define the persistence operations required by the application without exposing MongoDB-specific implementation details.
+These interfaces define persistence operations required by the application without exposing MongoDB-specific implementation details.
+
+Repository responsibilities are separated by persistence concern:
+
+- `UserRepository` handles user persistence, user BMI updates, and retrieval of stored BMI values.
+- `CaloriesRepository` handles daily calorie persistence by user and date.
+- `WaterRepository` handles stored water records and daily water-goal persistence.
+
+`UserRepository` does not own calorie persistence. BMI remains in `UserRepository` because BMI is stored directly on the `users` document.
 
 ---
 
 ### MongoDB Repository Implementations
 
 ```text
+MongoCaloriesRepository
 MongoUserRepository
 MongoWaterRepository
 ```
@@ -550,21 +595,23 @@ mongodb-driver-sync
 
 Responsibilities include:
 
-- Reading data from MongoDB
-- Creating users
-- Updating supported user fields
-- Deleting users
-- Querying users by username
-- Updating BMI
-- Reading and updating calories
-- Reading and inserting water records
-- Managing daily water goals
-- Calculating water-related results
+- Reading and writing MongoDB persistence data
+- Creating, querying, patching, and deleting users
+- Updating stored BMI values
+- Retrieving stored BMI values without applying BMI category rules
+- Reading and updating daily calorie documents through `MongoCaloriesRepository`
+- Reading and inserting water records through `MongoWaterRepository`
+- Reading and updating stored daily water-goal documents
 - Performing MongoDB transactions
 - Performing MongoDB upserts
+- Resolving MongoDB `ObjectId` relationships
 - Protecting multi-document operations from concurrency races
-- Converting MongoDB `Document` objects into application models
+- Converting MongoDB `Document` objects into application or repository data
 - Wrapping synchronous database work with `CompletableFuture.supplyAsync { ... }`
+
+Business rules are intentionally kept out of the MongoDB repositories. Water calculations, calorie validation and fallback behavior, application date selection, goal defaults and validation, and BMI classification are handled by services.
+
+`MongoUserRepository` still performs the cross-collection cleanup required by user deletion so that calories, goals, water records, and the user document are removed atomically in one MongoDB transaction.
 
 The service layer depends on repository interfaces instead of depending directly on MongoDB-specific classes.
 
@@ -1043,14 +1090,15 @@ When the Android application sends a request to add water:
 6. The request reaches `UsersController`.
 7. The controller reads the username and water amount.
 8. The controller calls `WaterService`.
-9. `WaterService` delegates the persistence operation to `WaterRepository`.
-10. `MongoWaterRepository` opens a MongoDB client session.
-11. `withTransaction { ... }` starts the transactional workflow.
-12. The user's `transactionVersion` is incremented.
-13. A new `water_records` document is inserted.
-14. The transaction is committed.
-15. The result returns through the repository and service layers.
-16. The controller returns the result through HTTPS.
+9. `WaterService` validates the water amount and selects the application timestamp.
+10. `WaterService` delegates the prepared persistence operation to `WaterRepository`.
+11. `MongoWaterRepository` opens a MongoDB client session.
+12. `withTransaction { ... }` starts the transactional workflow.
+13. The user's `transactionVersion` is incremented.
+14. A new `water_records` document is inserted with the supplied amount and timestamp.
+15. The transaction is committed.
+16. The result returns through the repository and service layers.
+17. The controller returns the result through HTTPS.
 
 ```text
 HTTPS PATCH Request
@@ -1102,6 +1150,10 @@ Insert it
 
 ### Calories Upsert
 
+`UserHealthService` selects the application date and validates the calorie value before `CaloriesRepository` persists it.
+
+`MongoCaloriesRepository` then performs the MongoDB upsert.
+
 Conceptually:
 
 ```javascript
@@ -1136,6 +1188,10 @@ with one MongoDB update command using upsert.
 ---
 
 ### Goal Upsert
+
+`WaterService` validates the goal and selects the application date before the persistence operation reaches `WaterRepository`.
+
+`MongoWaterRepository` then performs the MongoDB upsert.
 
 Conceptually:
 
@@ -1538,6 +1594,44 @@ WaterRepository
 MongoWaterRepository
     ↓
 MongoDB Transaction
+```
+
+Example calories flow:
+
+```text
+Android
+    ↓
+HTTPS
+    ↓
+Bearer JWT
+    ↓
+JwtAuthenticationFilter
+    ↓
+UsersController
+    ↓
+UserHealthService
+    ↓
+CaloriesRepository
+    ↓
+MongoCaloriesRepository
+    ↓
+MongoDB Transaction / Upsert
+```
+
+Example BMI statistics flow:
+
+```text
+UsersController
+    ↓
+StatisticsService
+    ↓
+UserRepository.findAllBmiValues()
+    ↓
+MongoUserRepository
+    ↓
+MongoDB users collection
+    ↓
+StatisticsService BMI classification
 ```
 
 This architecture separates:
@@ -2246,8 +2340,13 @@ The local MongoDB replica set must be available for transaction-related tests.
 - Kotlin Spring Boot application
 - Layered backend architecture
 - Controller / Service / Repository separation
-- Repository interfaces
-- Dedicated MongoDB repository implementations
+- Service-owned business rules and application-level validation
+- Repository interfaces separated by persistence concern
+- Dedicated `UserRepository`, `WaterRepository`, and `CaloriesRepository` contracts
+- Dedicated `MongoUserRepository`, `MongoWaterRepository`, and `MongoCaloriesRepository` implementations
+- BMI classification separated from BMI persistence
+- Water calculations separated from water-record persistence
+- Calorie validation and application-date selection separated from calorie persistence
 - Constructor dependency injection
 - Centralized MongoDB configuration
 - Shared `MongoClient`
