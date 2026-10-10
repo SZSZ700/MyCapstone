@@ -1,6 +1,7 @@
 @file:Suppress("PackageName")
 package org.example.CapstoneProject.service
 import org.example.CapstoneProject.repository.UserRepository
+import org.example.CapstoneProject.repository.mongo.MongoCaloriesRepository
 import org.springframework.stereotype.Service
 import java.time.LocalDate
 import java.util.concurrent.CompletableFuture
@@ -14,7 +15,9 @@ import java.util.concurrent.CompletableFuture
 @Service
 class UserHealthService(
     // Repository used to access user data.
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+    // Repository used to access calorie data.
+    private val caloriesRepository: MongoCaloriesRepository
 ) {
 
     // ---------------------------------------------------------------------
@@ -33,7 +36,7 @@ class UserHealthService(
         // Determine the date for the application operation.
         val today = LocalDate.now()
         // Convert a missing stored value into the application's default value.
-        return userRepository.getCalories(username, today)
+        return caloriesRepository.getCalories(username, today)
             .thenApply { calories -> calories ?: 0 }
     }
 
@@ -53,6 +56,6 @@ class UserHealthService(
         val today = LocalDate.now()
 
         // Delegate persistence to the repository.
-        return userRepository.updateCalories(username, today, calories)
+        return caloriesRepository.updateCalories(username, today, calories)
     }
 }

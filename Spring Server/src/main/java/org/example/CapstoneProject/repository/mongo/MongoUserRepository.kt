@@ -5,16 +5,13 @@ import com.mongodb.client.ClientSession
 import com.mongodb.client.MongoClient
 import com.mongodb.client.MongoCollection
 import com.mongodb.client.MongoDatabase
-import com.mongodb.client.model.UpdateOptions
 import org.bson.Document
 import org.bson.conversions.Bson
 import org.bson.types.ObjectId
 import org.example.CapstoneProject.model.User
 import org.example.CapstoneProject.repository.UserRepository
 import org.springframework.stereotype.Repository
-import java.time.LocalDate
 import java.util.concurrent.CompletableFuture
-import com.mongodb.client.model.Filters.and
 import com.mongodb.client.model.Filters.eq
 import com.mongodb.client.model.Updates.combine
 import com.mongodb.client.model.Updates.inc
@@ -306,101 +303,6 @@ class MongoUserRepository(database: MongoDatabase,
             val result = users.updateOne(eq("username", username), set("bmi", bmi))
             // matchedCount tells us whether MongoDB found the user.
             result.matchedCount > 0
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    // Returns the calories value for a user on the supplied date.
-    //
-    // Mongo raw:
-    // db.calories.findOne({
-    //     userId: userId,
-    //     recordDate: date
-    // })
-    //
-    // Returns null when:
-    // - the user does not exist
-    // - no calories document exists for the supplied date
-    // - the calories field is missing
-    // ---------------------------------------------------------------------
-    override fun getCalories(username: String, date: LocalDate): CompletableFuture<Int?> {
-        // Run the synchronous MongoDB operation asynchronously.
-        return CompletableFuture.supplyAsync<Int?> {
-            // Resolve the username into the user's ObjectId.
-            val userId = findUserId(username)
-
-            if (userId == null) { null }
-            else {
-                // Convert the date to the yyyy-MM-dd format stored in MongoDB.
-                val recordDate = date.toString()
-                // Find the calories document for the supplied date.
-                val document = calories.find(
-                    and(
-                        eq("userId", userId),
-                        eq("recordDate", recordDate)
-                    )
-                ).first()
-
-                if (document == null) { null }
-                else {
-                    // Return the stored value without applying an application fallback.
-                    document.get("calories", Number::class.java)?.toInt()
-                }
-            }
-        }
-    }
-
-    // ---------------------------------------------------------------------
-    // Updates the calories value for a user on the supplied date
-    // using a MongoDB transaction.
-    //
-    // The transaction contains:
-    // 1. Find and lock the user.
-    // 2. Update the calories document for the supplied date.
-    // 3. Insert the document automatically when it does not exist.
-    //
-    // upsert(true) means:
-    // - If the document exists -> update it.
-    // - If the document does not exist -> insert it.
-    //
-    // Calories validation and date selection are handled by the service layer.
-    //
-    // Returns true when the update succeeded.
-    // Returns false when no matching user exists.
-    // ---------------------------------------------------------------------
-    override fun updateCalories(username: String, date: LocalDate, calories: Int): CompletableFuture<Boolean> {
-        // Run the synchronous MongoDB operations asynchronously.
-        return CompletableFuture.supplyAsync {
-            // Open a MongoDB client session.
-            val session = mongoClient.startSession()
-            session.use { session ->
-                // Execute the complete operation inside one transaction.
-                session.withTransaction {
-                    // Find and lock the user inside the current transaction.
-                    val userId = lockAndFindUserId(session, username)
-
-                    if (userId == null) { false }
-                    else {
-                        // Convert the date to the yyyy-MM-dd format stored in MongoDB.
-                        val recordDate = date.toString()
-
-                        // Update the calories document.
-                        // MongoDB inserts the document when it does not exist.
-                        this@MongoUserRepository.calories.updateOne(
-                            session,
-                            and(eq("userId", userId),
-                                eq("recordDate", recordDate)
-                            ),
-                            set("calories", calories),
-                            UpdateOptions().upsert(true)
-                        )
-
-                        // Returning true allows withTransaction()
-                        // to commit the transaction.
-                        true
-                    }
-                }
-            }
         }
     }
 

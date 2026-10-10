@@ -1,7 +1,6 @@
 @file:Suppress("PackageName")
 package org.example.CapstoneProject.repository
 import org.example.CapstoneProject.model.User
-import java.time.LocalDate
 import java.util.concurrent.CompletableFuture
 
 // -------------------------------------------------------------------------
@@ -59,19 +58,6 @@ interface UserRepository {
     // Returns false when no matching user exists.
     // ---------------------------------------------------------------------
     fun updateBmi(username: String, bmi: Double): CompletableFuture<Boolean>
-
-    // ---------------------------------------------------------------------
-    // Returns the calories value for a user on the supplied date.
-    // Returns null when the user or calorie record does not exist.
-    // ---------------------------------------------------------------------
-    fun getCalories(username: String, date: LocalDate): CompletableFuture<Int?>
-
-    // ---------------------------------------------------------------------
-    // Updates the calories value for a user on the supplied date.
-    // Returns true when the update succeeded.
-    // Returns false when no matching user exists.
-    // ---------------------------------------------------------------------
-    fun updateCalories(username: String, date: LocalDate, calories: Int): CompletableFuture<Boolean>
 
     // ---------------------------------------------------------------------
     // Returns all stored BMI values.
