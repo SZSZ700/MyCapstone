@@ -59,7 +59,7 @@ Spring Server/
 │
 └── src/
     ├── main/
-    │   ├── java/
+    │   ├── Kotlin/
     │   │   └── org/example/CapstoneProject/
     │   │       ├── Application.kt
     │   │       │
@@ -115,14 +115,12 @@ Spring Server/
     │       └── keystore.p12
     │
     └── test/
-        └── java/
+        └── Kotlin/
             └── CapstoneTests/
                 ├── CapstoneServicesIntegrationTest.kt
                 ├── JwtServiceTest.kt
                 └── UsersControllerIntegrationTest.kt
 ```
-
-> The backend contains Kotlin `.kt` source files only. The directories are currently named `src/main/Kotlin` and `src/test/Kotlin` as source-set paths, but there are no Java source files in the server project.
 
 > `.env`, `application.properties`, and `keystore.p12` contain local configuration and must be handled appropriately.
 
