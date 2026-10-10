@@ -122,7 +122,7 @@ Spring Server/
                 └── UsersControllerIntegrationTest.kt
 ```
 
-> The backend contains Kotlin `.kt` source files only. The directories are currently named `src/main/java` and `src/test/java` as source-set paths, but there are no Java source files in the server project.
+> The backend contains Kotlin `.kt` source files only. The directories are currently named `src/main/Kotlin` and `src/test/java` as source-set paths, but there are no Java source files in the server project.
 
 > `.env`, `application.properties`, and `keystore.p12` contain local configuration and must be handled appropriately.
 
