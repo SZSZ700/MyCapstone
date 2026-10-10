@@ -209,7 +209,18 @@
         <!-- ========================================================= -->
         <!-- Testing -->
         <!-- ========================================================= -->
+        <!-- Spring Boot 4 REST client infrastructure -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+        </dependency>
 
+        <!-- TestRestTemplate support for Spring Boot 4 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-resttestclient</artifactId>
+            <scope>test</scope>
+        </dependency>
         <!--
             Includes:
             JUnit Jupiter

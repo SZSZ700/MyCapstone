@@ -1,45 +1,26 @@
 @file:Suppress("PackageName", "UNCHECKED_CAST")
 // Define the package for this integration test class.
 package CapstoneTests
-// Import the Spring Boot application class.
 import org.example.CapstoneProject.Application
-// Import the login response DTO.
 import org.example.CapstoneProject.dto.LoginResponse
-// Import the public user response DTO.
 import org.example.CapstoneProject.dto.UserResponse
-// Import the internal User model.
 import org.example.CapstoneProject.model.User
-// Import the JWT service used to generate real test tokens.
 import org.example.CapstoneProject.service.JwtService
-// Import the user service used for test setup and cleanup.
 import org.example.CapstoneProject.service.UserService
-// Import JUnit lifecycle annotations.
 import org.junit.jupiter.api.AfterAll
-import org.junit.jupiter.api.BeforeAll
-// Import JUnit test annotation.
-import org.junit.jupiter.api.Test
-// Import JUnit test instance configuration.
-import org.junit.jupiter.api.TestInstance
-// Import JUnit assertions.
 import org.junit.jupiter.api.Assertions.*
-// Import Spring dependency injection support.
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.springframework.beans.factory.annotation.Autowired
-// Import Spring Boot integration test support.
+import org.springframework.boot.resttestclient.TestRestTemplate
+import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureTestRestTemplate
 import org.springframework.boot.test.context.SpringBootTest
-// Import TestRestTemplate for real HTTP calls.
-import org.springframework.boot.test.web.client.TestRestTemplate
-// Import HTTP request wrapper.
 import org.springframework.http.HttpEntity
-// Import HTTP status values.
-import org.springframework.http.HttpStatus
-// Import HTTP methods such as PUT, PATCH, DELETE and HEAD.
 import org.springframework.http.HttpMethod
-// Import the configured password encoder.
+import org.springframework.http.HttpStatus
 import org.springframework.security.crypto.password.PasswordEncoder
-// Import collection utilities.
-import java.util.Collections
-import java.util.HashSet
-// Import timeout units for asynchronous service calls.
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 // -------------------------------------------------------------------------
@@ -81,6 +62,7 @@ import java.util.concurrent.TimeUnit
     properties = ["server.ssl.enabled=false"]
 )
 
+@AutoConfigureTestRestTemplate
 // Use one test instance for the complete test class.
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class UsersControllerIntegrationTest {
