@@ -181,10 +181,12 @@ MyCapstone/
         │   │       │   └── User.kt
         │   │       │
         │   │       ├── repository/
+        │   │       │   ├── CaloriesRepository.kt
         │   │       │   ├── UserRepository.kt
         │   │       │   ├── WaterRepository.kt
         │   │       │   │
         │   │       │   └── mongo/
+        │   │       │       ├── MongoCaloriesRepository.kt
         │   │       │       ├── MongoUserRepository.kt
         │   │       │       └── MongoWaterRepository.kt
         │   │       │
@@ -464,13 +466,26 @@ Responsibilities include:
 
 - Authentication flow
 - User operations
-- Water operations
+- User input validation and password preparation
+- Water amount validation
+- Application date selection for daily water, goal, and calorie operations
+- Daily water totals and yesterday totals
+- Water history completion with zero values for missing days
+- Weekly water bucket and average calculations
+- Daily water-goal defaults and validation
+- Calories validation and application-level fallback behavior
 - BMI operations
-- Goal operations
-- Calories operations
+- BMI distribution classification
 - Statistics
 - JWT operations
-- Business validation
+
+Business rules and application-level decisions are kept in the service layer.
+
+`WaterService` calculates water totals, history results, weekly averages, default goal behavior, and goal validation from persistence data returned by `WaterRepository`.
+
+`UserHealthService` uses `UserRepository` for BMI persistence and `CaloriesRepository` for daily calorie persistence.
+
+`StatisticsService` retrieves stored BMI values from `UserRepository` and applies the BMI category classification in the service layer.
 
 The service layer depends on repository interfaces rather than MongoDB-specific repository classes.
 
@@ -513,6 +528,7 @@ Repository interfaces:
 
 ```text
 repository/
+├── CaloriesRepository.kt
 ├── UserRepository.kt
 └── WaterRepository.kt
 ```
@@ -521,11 +537,24 @@ MongoDB implementations:
 
 ```text
 repository/mongo/
+├── MongoCaloriesRepository.kt
 ├── MongoUserRepository.kt
 └── MongoWaterRepository.kt
 ```
 
-This separates application logic from database-specific implementation details.
+Repository responsibilities are separated by persistence concern:
+
+- `UserRepository` handles user persistence, user BMI updates, and retrieval of stored BMI values.
+- `CaloriesRepository` handles daily calorie persistence by user and date.
+- `WaterRepository` handles stored water records and daily water-goal persistence.
+
+The MongoDB implementations contain database-specific behavior such as queries, `ObjectId` resolution, upserts, sessions, transactions, and document mapping.
+
+Business rules remain in the service layer. For example, `WaterService` calculates daily totals and weekly averages, `UserHealthService` validates calorie values and selects the application date, and `StatisticsService` classifies BMI values.
+
+`MongoUserRepository` also keeps the cross-collection cleanup required for atomic user deletion because that operation is implemented as a MongoDB transaction.
+
+This separates application business logic from database-specific implementation details.
 
 ---
 
@@ -857,10 +886,10 @@ Example water update flow:
 4. TLS protects the request.
 5. `JwtAuthenticationFilter` validates the JWT.
 6. `UsersController` receives the authorized request.
-7. `WaterService` processes the operation.
+7. `WaterService` validates the amount and selects the application timestamp.
 8. `WaterRepository` defines the persistence operation.
-9. `MongoWaterRepository` performs the MongoDB work.
-10. A MongoDB transaction protects related writes.
+9. `MongoWaterRepository` resolves the user and performs the MongoDB work.
+10. A MongoDB transaction protects the user lock and water-record insert.
 11. MongoDB stores the water record.
 12. The result propagates back through the repository, service, and controller.
 13. Android receives the HTTPS response.
@@ -1326,7 +1355,9 @@ For user-specific routes, the JWT subject must match the `{username}` path value
 
 - Store daily calories
 - Retrieve daily calories
-- Validate calorie values
+- Validate calorie values in `UserHealthService`
+- Select the application date in the service layer
+- Use the dedicated `CaloriesRepository` persistence abstraction
 - MongoDB upsert
 - Transaction-protected updates
 
@@ -1334,10 +1365,11 @@ For user-specific routes, the JWT subject must match the `{username}` path value
 
 ## 🎯 Daily Water Goals
 
-- Retrieve current goal
+- Retrieve the most recently stored goal
+- Apply the default goal in `WaterService` when no stored value exists
 - Update today's goal
 - Keep historical goal records
-- Validate allowed goal values
+- Validate allowed goal values in `WaterService`
 - MongoDB upsert
 
 ---
@@ -1678,8 +1710,12 @@ This project was developed as a final capstone project in Software Engineering s
 - Kotlin Spring Boot backend
 - Layered backend architecture
 - Controller / Service / Repository separation
+- Service-owned business rules and validation
 - MongoDB repository abstraction
+- Dedicated user, water, and calorie repository contracts
 - Dedicated MongoDB repository implementations
+- Separation of BMI classification from BMI persistence
+- Separation of water calculations from water persistence
 - Centralized MongoDB configuration
 - Four-collection MongoDB data model
 - ObjectId-based relationships
