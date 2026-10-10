@@ -6,42 +6,89 @@
 
     <modelVersion>4.0.0</modelVersion>
 
+    <!-- Spring Boot manages the compatible dependency ecosystem -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
     <groupId>org.example</groupId>
     <artifactId>mvproject</artifactId>
     <version>1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <properties>
+
+        <!-- Java -->
         <java.version>23</java.version>
-        <kotlin.version>1.9.25</kotlin.version>
 
-        <maven.compiler.source>${java.version}</maven.compiler.source>
-        <maven.compiler.target>${java.version}</maven.compiler.target>
+        <!-- Kotlin -->
+        <kotlin.version>2.4.21</kotlin.version>
+
+        <!--
+            Security overrides over Spring Boot managed versions.
+            These move the vulnerable transitive dependencies
+            to newer patched versions.
+        -->
+        <tomcat.version>11.0.26</tomcat.version>
+        <jackson-bom.version>3.1.7</jackson-bom.version>
+        <logback.version>1.6.5</logback.version>
+        <mongodb.version>5.13.0</mongodb.version>
+
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-
-            <!-- Spring Boot dependency management -->
-            <dependency>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-dependencies</artifactId>
-                <version>3.5.16</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
 
-        <!-- Spring Web -->
+        <!-- ========================================================= -->
+        <!-- Spring -->
+        <!-- ========================================================= -->
+
+        <!-- Spring MVC + embedded Tomcat -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- Jakarta Bean Validation -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <!-- BCrypt password hashing -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-crypto</artifactId>
+        </dependency>
+
+
+        <!-- ========================================================= -->
+        <!-- MongoDB -->
+        <!-- ========================================================= -->
+
+        <!--
+            Version is controlled by:
+            <mongodb.version>5.13.0</mongodb.version>
+
+            This keeps:
+            mongodb-driver-sync
+            mongodb-driver-core
+            bson
+            on the same version line.
+        -->
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+        </dependency>
+
+
+        <!-- ========================================================= -->
+        <!-- HTTP -->
+        <!-- ========================================================= -->
 
         <!-- OkHttp -->
         <dependency>
@@ -50,6 +97,11 @@
             <version>4.12.0</version>
         </dependency>
 
+
+        <!-- ========================================================= -->
+        <!-- JSON -->
+        <!-- ========================================================= -->
+
         <!-- org.json -->
         <dependency>
             <groupId>org.json</groupId>
@@ -57,12 +109,17 @@
             <version>20240303</version>
         </dependency>
 
-        <!-- JUnit 5 -->
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
+        <!--
+            Jackson itself comes transitively from Spring Boot.
+
+            Its version is controlled through:
+            <jackson-bom.version>3.1.7</jackson-bom.version>
+        -->
+
+
+        <!-- ========================================================= -->
+        <!-- Native access -->
+        <!-- ========================================================= -->
 
         <!-- JNA -->
         <dependency>
@@ -77,12 +134,22 @@
             <version>5.14.0</version>
         </dependency>
 
-        <!-- Loads environment variables from the local .env file -->
+
+        <!-- ========================================================= -->
+        <!-- Environment variables -->
+        <!-- ========================================================= -->
+
+        <!-- Loads variables from local .env -->
         <dependency>
             <groupId>io.github.cdimascio</groupId>
             <artifactId>java-dotenv</artifactId>
             <version>5.2.2</version>
         </dependency>
+
+
+        <!-- ========================================================= -->
+        <!-- QR / Barcode -->
+        <!-- ========================================================= -->
 
         <!-- ZXing core -->
         <dependency>
@@ -91,28 +158,83 @@
             <version>3.5.4</version>
         </dependency>
 
-        <!-- ZXing Java SE support -->
+        <!-- ZXing Java SE -->
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>javase</artifactId>
             <version>3.5.4</version>
         </dependency>
 
-        <!--
-            Spring Boot test starter.
 
-            Provides JUnit 5, Mockito, Spring Test
-            and additional testing utilities.
+        <!-- ========================================================= -->
+        <!-- JWT -->
+        <!-- ========================================================= -->
+
+        <!-- Nimbus JOSE + JWT -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>nimbus-jose-jwt</artifactId>
+            <version>10.9</version>
+        </dependency>
+
+
+        <!-- ========================================================= -->
+        <!-- Nullability annotations -->
+        <!-- ========================================================= -->
+
+        <dependency>
+            <groupId>org.jspecify</groupId>
+            <artifactId>jspecify</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+
+        <!-- ========================================================= -->
+        <!-- Kotlin -->
+        <!-- ========================================================= -->
+
+        <!-- Kotlin standard library -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-stdlib</artifactId>
+        </dependency>
+
+        <!-- Required by Spring reflection / Kotlin integration -->
+        <dependency>
+            <groupId>org.jetbrains.kotlin</groupId>
+            <artifactId>kotlin-reflect</artifactId>
+        </dependency>
+
+
+        <!-- ========================================================= -->
+        <!-- Testing -->
+        <!-- ========================================================= -->
+
+        <!--
+            Includes:
+            JUnit Jupiter
+            Mockito
+            Spring Test
+            AssertJ
+            JSON support
+            etc.
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+
             <exclusions>
+
+                <!--
+                    We manage JSONAssert explicitly below
+                    because of its android-json transitive dependency.
+                -->
                 <exclusion>
                     <groupId>org.skyscreamer</groupId>
                     <artifactId>jsonassert</artifactId>
                 </exclusion>
+
             </exclusions>
         </dependency>
 
@@ -122,125 +244,87 @@
             <artifactId>jsonassert</artifactId>
             <version>1.5.3</version>
             <scope>test</scope>
+
             <exclusions>
+
+                <!-- Avoid android-json collision -->
                 <exclusion>
                     <groupId>com.vaadin.external.google</groupId>
                     <artifactId>android-json</artifactId>
                 </exclusion>
+
             </exclusions>
-        </dependency>
-
-        <!--
-            Mockito inline allows mocking final and static
-            methods/classes when needed.
-        -->
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-inline</artifactId>
-            <version>5.2.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Jakarta Bean Validation support -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-validation</artifactId>
-        </dependency>
-
-        <!-- BCrypt password hashing -->
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-crypto</artifactId>
-        </dependency>
-
-        <!-- Nimbus JOSE + JWT -->
-        <dependency>
-            <groupId>com.nimbusds</groupId>
-            <artifactId>nimbus-jose-jwt</artifactId>
-            <version>10.9</version>
-        </dependency>
-
-        <!-- TestNG -->
-        <dependency>
-            <groupId>org.testng</groupId>
-            <artifactId>testng</artifactId>
-            <version>7.12.0</version>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- MongoDB synchronous Java Driver -->
-        <dependency>
-            <groupId>org.mongodb</groupId>
-            <artifactId>mongodb-driver-sync</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.jspecify</groupId>
-            <artifactId>jspecify</artifactId>
-            <version>1.0.0</version>
-        </dependency>
-
-        <!-- Kotlin standard library -->
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib</artifactId>
-        </dependency>
-
-        <!-- Kotlin reflection support for Spring -->
-        <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-reflect</artifactId>
         </dependency>
 
     </dependencies>
 
+
+    <!-- ============================================================= -->
+    <!-- Build -->
+    <!-- ============================================================= -->
+
     <build>
+
         <plugins>
 
-            <!-- Spring Boot Maven plugin -->
+            <!-- ===================================================== -->
+            <!-- Spring Boot -->
+            <!-- ===================================================== -->
+
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.5.16</version>
             </plugin>
 
-            <!--
-                Kotlin Maven plugin.
 
-                Uses the Kotlin version managed by Spring Boot.
-                Compiles Kotlin source files from src/main/kotlin
-                and test files from src/test/kotlin.
-            -->
+            <!-- ===================================================== -->
+            <!-- Kotlin -->
+            <!-- ===================================================== -->
+
             <plugin>
+
                 <groupId>org.jetbrains.kotlin</groupId>
                 <artifactId>kotlin-maven-plugin</artifactId>
                 <version>${kotlin.version}</version>
 
                 <executions>
 
-                    <!-- Compile Kotlin application source code -->
+                    <!-- Compile main Kotlin source -->
                     <execution>
                         <id>compile</id>
                         <phase>compile</phase>
+
                         <goals>
                             <goal>compile</goal>
                         </goals>
+
                     </execution>
 
-                    <!-- Compile Kotlin test source code -->
+                    <!-- Compile Kotlin tests -->
                     <execution>
                         <id>test-compile</id>
                         <phase>test-compile</phase>
+
                         <goals>
                             <goal>test-compile</goal>
                         </goals>
+
                     </execution>
 
                 </executions>
 
                 <configuration>
 
-                    <!-- Enable Spring support for Kotlin classes -->
+                    <!-- Kotlin produces Java 23 compatible bytecode -->
+                    <jvmTarget>${java.version}</jvmTarget>
+
+                    <!--
+                        Kotlin classes are final by default.
+
+                        Spring frequently needs to create proxies,
+                        therefore the Spring compiler plugin automatically
+                        opens the required Spring-managed classes.
+                    -->
                     <compilerPlugins>
                         <plugin>spring</plugin>
                     </compilerPlugins>
@@ -249,11 +333,7 @@
 
                 <dependencies>
 
-                    <!--
-                        Required by the Kotlin Spring compiler plugin.
-
-                        Uses the same Kotlin version managed by Spring Boot.
-                    -->
+                    <!-- Required for Kotlin Spring all-open plugin -->
                     <dependency>
                         <groupId>org.jetbrains.kotlin</groupId>
                         <artifactId>kotlin-maven-allopen</artifactId>
@@ -261,20 +341,36 @@
                     </dependency>
 
                 </dependencies>
+
             </plugin>
 
-            <!-- Compile the project using Java 23 -->
+
+            <!-- ===================================================== -->
+            <!-- Java compiler -->
+            <!-- ===================================================== -->
+
             <plugin>
+
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.11.0</version>
+
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+
+                    <!--
+                        Better than source + target.
+
+                        release controls both:
+                        - generated bytecode version
+                        - available Java API level
+                    -->
+                    <release>${java.version}</release>
+
                 </configuration>
+
             </plugin>
 
         </plugins>
+
     </build>
 
 </project>
