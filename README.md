@@ -153,7 +153,7 @@ MyCapstone/
     │
     └── src/
         ├── main/
-        │   ├── java/
+        │   ├── Kotlin/
         │   │   └── org/example/CapstoneProject/
         │   │       ├── Application.kt
         │   │       │
@@ -209,7 +209,7 @@ MyCapstone/
         │       └── keystore.p12
         │
         └── test/
-            └── java/
+            └── Kotlin/
                 └── CapstoneTests/
                     ├── CapstoneServicesIntegrationTest.kt
                     ├── JwtServiceTest.kt
